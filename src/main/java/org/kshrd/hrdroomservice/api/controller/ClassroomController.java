@@ -40,7 +40,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v4/classrooms")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "02. Classroom", description = "Classrooms")
 public class ClassroomController {
 
     private final ClassroomService classroomService;

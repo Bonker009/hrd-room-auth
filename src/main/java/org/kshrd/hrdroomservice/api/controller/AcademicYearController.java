@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v4/academic-years")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "06. Admin & Utility", description = "Academic years")
 public class AcademicYearController {
 
     private final AcademicYearService academicYearService;

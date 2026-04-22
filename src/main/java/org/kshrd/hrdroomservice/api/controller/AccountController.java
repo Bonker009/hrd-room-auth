@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v4/account")
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "01. Auth", description = "Authenticated account endpoints")
 public class AccountController {
 
     @GetMapping("/me")

@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v4/enrollments")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "02. Classroom", description = "Enrollments")
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;

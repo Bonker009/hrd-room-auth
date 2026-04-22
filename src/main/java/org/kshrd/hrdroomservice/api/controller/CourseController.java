@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v4/courses")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "02. Classroom", description = "Courses")
 public class CourseController {
 
     private final CourseService courseService;
