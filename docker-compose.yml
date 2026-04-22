@@ -1,0 +1,66 @@
+services:
+  rustfs:
+    image: ${RUSTFS_IMAGE:-rustfs/rustfs:latest}
+    container_name: hrd-room-service-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY_ID:-minioadmin}
+      RUSTFS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-minioadmin}
+      RUSTFS_DEFAULT_BUCKETS: ${RUSTFS_BUCKET_NAME:-hrd-room-service}
+    ports:
+      - "${RUSTFS_API_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs_data:/data
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    container_name: hrd-room-service-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hrd_room_service}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hrd_room_service}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SKIP_TESTS: "true"
+    container_name: hrd-room-service-app
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      APP_SECURITY_ENABLED: ${APP_SECURITY_ENABLED:-false}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-hrd_room_service}
+      DB_USERNAME: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      RUSTFS_ENABLED: ${RUSTFS_ENABLED:-false}
+      RUSTFS_ENDPOINT_URL: ${RUSTFS_ENDPOINT_URL:-http://rustfs:9000}
+      RUSTFS_BUCKET_NAME: ${RUSTFS_BUCKET_NAME:-hrd-room-service}
+      RUSTFS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY_ID:-minioadmin}
+      RUSTFS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-minioadmin}
+      RUSTFS_REGION: ${RUSTFS_REGION:-us-east-1}
+    depends_on:
+      db:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rustfs_data:

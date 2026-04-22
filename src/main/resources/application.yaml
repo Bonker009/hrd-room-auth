@@ -1,0 +1,77 @@
+server:
+  # Port: project-root .env (loaded at startup), env APP_PORT / SERVER_PORT, or -Dserver.port=...
+  port: ${APP_PORT:${SERVER_PORT:8080}}
+
+spring:
+  application:
+    name: hrd-room-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:hrd_room_service}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/assessment}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/assessment/protocol/openid-connect/certs}
+
+mybatis:
+  type-handlers-package: org.kshrd.hrdroomservice.persistence.typehandler
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:true}
+  jwt:
+    role-claim: realm_access.roles
+    principal-claim: ${JWT_PRINCIPAL_CLAIM:sub}
+
+keycloak:
+  auth:
+    auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
+    realm: ${KEYCLOAK_REALM:assessment}
+    client-id: ${KEYCLOAK_CLIENT_ID:hrd-room-service}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:change-me}
+
+rustfs:
+  enabled: ${RUSTFS_ENABLED:false}
+  endpoint-url: ${RUSTFS_ENDPOINT_URL:}
+  bucket-name: ${RUSTFS_BUCKET_NAME:}
+  access-key-id: ${RUSTFS_ACCESS_KEY_ID:}
+  secret-access-key: ${RUSTFS_SECRET_ACCESS_KEY:}
+  region: ${RUSTFS_REGION:us-east-1}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+# In Docker, listen on 8080 inside the container (matches Dockerfile EXPOSE and compose mapping).
+server:
+  port: 8080

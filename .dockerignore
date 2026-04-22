@@ -1,0 +1,13 @@
+.git
+.gradle
+build
+out
+target
+.idea
+.vscode
+*.iml
+**/.DS_Store
+**/Thumbs.db
+README*
+terminals
+agent-transcripts
