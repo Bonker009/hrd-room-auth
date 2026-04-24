@@ -26,24 +26,28 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ProblemDetail> handleAuth(AuthenticationException ex, HttpServletRequest req) {
+    public ResponseEntity<ProblemDetail> handleAuth(
+            AuthenticationException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ProblemDetailSupport.simple(
-                        HttpStatus.UNAUTHORIZED.value(),
-                        "Unauthorized",
-                        "Authentication is required for this resource.",
-                        "UNAUTHORIZED",
-                        req));
+                .body(
+                        ProblemDetailSupport.simple(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized",
+                                "Authentication is required for this resource.",
+                                "UNAUTHORIZED",
+                                req));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ProblemDetail> handleDenied(AccessDeniedException ex, HttpServletRequest req) {
+    public ResponseEntity<ProblemDetail> handleDenied(
+            AccessDeniedException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ProblemDetailSupport.simple(
-                        HttpStatus.FORBIDDEN.value(),
-                        "Forbidden",
-                        "You do not have permission to perform this action.",
-                        "ACCESS_DENIED",
-                        req));
+                .body(
+                        ProblemDetailSupport.simple(
+                                HttpStatus.FORBIDDEN.value(),
+                                "Forbidden",
+                                "You do not have permission to perform this action.",
+                                "ACCESS_DENIED",
+                                req));
     }
 }

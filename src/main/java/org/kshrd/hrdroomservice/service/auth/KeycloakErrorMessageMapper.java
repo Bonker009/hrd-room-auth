@@ -8,7 +8,8 @@ public final class KeycloakErrorMessageMapper {
     private KeycloakErrorMessageMapper() {}
 
     /**
-     * @param keycloakErrorMessage value from Keycloak JSON {@code errorMessage} (often {@code error-…})
+     * @param keycloakErrorMessage value from Keycloak JSON {@code errorMessage} (often {@code
+     *     error-…})
      */
     public static String toUserMessage(String keycloakErrorMessage) {
         if (keycloakErrorMessage == null || keycloakErrorMessage.isBlank()) {
@@ -25,11 +26,13 @@ public final class KeycloakErrorMessageMapper {
             case "error-duplicate-email" -> "That email address is already registered.";
             case "error-user-attribute-required" ->
                     "A required user attribute is missing. Check username, email, and name fields.";
-            case "error-invalid-value" -> "One of the submitted values is not valid for this realm.";
+            case "error-invalid-value" ->
+                    "One of the submitted values is not valid for this realm.";
             case "error-password-rejected" ->
                     "Password does not meet the realm password policy. Choose a stronger or longer password.";
             case "error-password-too-short" -> "Password is too short for this realm.";
-            case "error-password-too-young" -> "Password cannot be reused yet (password history policy).";
+            case "error-password-too-young" ->
+                    "Password cannot be reused yet (password history policy).";
             case "error-person-name-invalid-character" ->
                     "First or last name contains characters that are not allowed.";
             case "error-email-invalid" -> "Email format is not accepted by the identity provider.";

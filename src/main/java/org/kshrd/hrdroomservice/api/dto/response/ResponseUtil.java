@@ -11,8 +11,10 @@ public final class ResponseUtil {
         return ResponseEntity.ok(ApiResponse.success(data, message, HttpStatus.OK.value()));
     }
 
-    public static <T> ResponseEntity<ApiResponse<PageResponse<T>>> okPage(PageResponse<T> page, String message) {
-        return ResponseEntity.ok(ApiResponse.<PageResponse<T>>success(page, message, HttpStatus.OK.value()));
+    public static <T> ResponseEntity<ApiResponse<PageResponse<T>>> okPage(
+            PageResponse<T> page, String message) {
+        return ResponseEntity.ok(
+                ApiResponse.<PageResponse<T>>success(page, message, HttpStatus.OK.value()));
     }
 
     public static <T> ResponseEntity<ApiResponse<T>> created(T data, String message) {
@@ -32,7 +34,9 @@ public final class ResponseUtil {
 
     public static <T> ResponseEntity<ApiResponse<T>> badRequest(String message) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), message, "BAD_REQUEST", null));
+                .body(
+                        ApiResponse.error(
+                                HttpStatus.BAD_REQUEST.value(), message, "BAD_REQUEST", null));
     }
 
     public static <T> ResponseEntity<ApiResponse<T>> conflict(String message) {
@@ -42,6 +46,8 @@ public final class ResponseUtil {
 
     public static <T> ResponseEntity<ApiResponse<T>> forbidden(String message) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(), message, "ACCESS_DENIED", null));
+                .body(
+                        ApiResponse.error(
+                                HttpStatus.FORBIDDEN.value(), message, "ACCESS_DENIED", null));
     }
 }

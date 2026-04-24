@@ -1,7 +1,6 @@
 package org.kshrd.hrdroomservice.api.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,8 @@ public class ClassroomController {
     @GetMapping("/my-classrooms")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> myClassrooms(
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         UUID teacherId =
                 SecurityUtils.currentUserId()
                         .orElseThrow(() -> new AccessDeniedException("Missing JWT subject"));
@@ -80,14 +80,16 @@ public class ClassroomController {
 
     @GetMapping("/subject/{subjectId}")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
-    public ResponseEntity<ApiResponse<List<ClassroomResponse>>> bySubject(@PathVariable UUID subjectId) {
+    public ResponseEntity<ApiResponse<List<ClassroomResponse>>> bySubject(
+            @PathVariable UUID subjectId) {
         return ResponseUtil.ok(classroomService.bySubject(subjectId), "OK");
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> list(
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseUtil.ok(classroomService.listAll(page, size), "OK");
     }
 
@@ -96,7 +98,8 @@ public class ClassroomController {
     public ResponseEntity<ApiResponse<ClassroomResponse>> create(
             @Valid @RequestBody ClassroomRequest request, @AuthenticationPrincipal Jwt jwt) {
         UUID actor = UUID.fromString(jwt.getSubject());
-        return ResponseUtil.created(classroomService.create(request, actor), "Classroom created successfully");
+        return ResponseUtil.created(
+                classroomService.create(request, actor), "Classroom created successfully");
     }
 
     @PutMapping("/{classroomId}")
@@ -106,7 +109,8 @@ public class ClassroomController {
             @Valid @RequestBody ClassroomRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         UUID actor = UUID.fromString(jwt.getSubject());
-        return ResponseUtil.ok(classroomService.update(classroomId, request, actor), "Classroom updated");
+        return ResponseUtil.ok(
+                classroomService.update(classroomId, request, actor), "Classroom updated");
     }
 
     @DeleteMapping("/{classroomId}")
@@ -116,7 +120,9 @@ public class ClassroomController {
         return ResponseUtil.noContent("Classroom deleted");
     }
 
-    @PostMapping(value = "/{classroomId}/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(
+            value = "/{classroomId}/upload-image",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadImage(
             @PathVariable UUID classroomId,

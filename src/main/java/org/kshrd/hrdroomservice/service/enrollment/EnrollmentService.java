@@ -22,9 +22,11 @@ public interface EnrollmentService {
 
     EnrollmentResponse getById(UUID enrollmentId);
 
-    EnrollmentResponse terminate(UUID enrollmentId, TerminateEnrollmentRequest request, UUID actorId);
+    EnrollmentResponse terminate(
+            UUID enrollmentId, TerminateEnrollmentRequest request, UUID actorId);
 
     EnrollmentResponse reactivate(UUID enrollmentId, UUID actorId);
 
-    EnrollmentResponse moveToAdvanced(UUID studentId, UUID basicCourseId, UUID advancedCourseId, UUID actorId);
+    EnrollmentResponse moveToAdvanced(
+            UUID studentId, UUID basicCourseId, UUID advancedCourseId, UUID actorId);
 }

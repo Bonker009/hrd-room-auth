@@ -44,12 +44,15 @@ class AuthControllerTest {
     void refresh_returnsWrappedTokenResponse() throws Exception {
         when(authService.refresh(any(RefreshTokenRequest.class)))
                 .thenReturn(
-                        new AuthTokenResponse("access-jwt", "new-refresh", 300L, 1800L, "Bearer", "openid"));
+                        new AuthTokenResponse(
+                                "access-jwt", "new-refresh", 300L, 1800L, "Bearer", "openid"));
 
         mockMvc.perform(
                         post("/api/v4/auth/refresh")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(new RefreshTokenRequest("old-refresh"))))
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new RefreshTokenRequest("old-refresh"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access-jwt"))

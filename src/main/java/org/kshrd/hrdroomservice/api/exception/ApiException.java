@@ -1,15 +1,14 @@
 package org.kshrd.hrdroomservice.api.exception;
 
-import org.springframework.http.HttpStatus;
-
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
 @Getter
 public class ApiException extends RuntimeException {
 
     private final HttpStatus status;
     private final String errorCode;
- 
+
     private final String field;
     private final String problemTitle;
 
@@ -17,7 +16,12 @@ public class ApiException extends RuntimeException {
         this(status, message, errorCode, null, null);
     }
 
-    public ApiException(HttpStatus status, String message, String errorCode, String field, String problemTitle) {
+    public ApiException(
+            HttpStatus status,
+            String message,
+            String errorCode,
+            String field,
+            String problemTitle) {
         super(message);
         this.status = status;
         this.errorCode = errorCode;
@@ -34,12 +38,17 @@ public class ApiException extends RuntimeException {
     }
 
     public static ApiException badRequest(String message, String field, String problemTitle) {
-        return new ApiException(HttpStatus.BAD_REQUEST, message, "BAD_REQUEST", field, problemTitle);
+        return new ApiException(
+                HttpStatus.BAD_REQUEST, message, "BAD_REQUEST", field, problemTitle);
     }
- 
+
     public static ApiException registrationRejected(String message, String field) {
         return new ApiException(
-                HttpStatus.BAD_REQUEST, message, "REGISTRATION_REJECTED", field, "Invalid registration");
+                HttpStatus.BAD_REQUEST,
+                message,
+                "REGISTRATION_REJECTED",
+                field,
+                "Invalid registration");
     }
 
     public static ApiException conflict(String message) {

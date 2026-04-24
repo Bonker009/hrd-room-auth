@@ -1,7 +1,6 @@
 package org.kshrd.hrdroomservice.api.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +40,8 @@ public class EnrollmentController {
             @RequestParam UUID courseId,
             @AuthenticationPrincipal Jwt jwt) {
         UUID actor = UUID.fromString(jwt.getSubject());
-        return ResponseUtil.created(enrollmentService.enroll(studentId, courseId, actor), "Enrolled");
+        return ResponseUtil.created(
+                enrollmentService.enroll(studentId, courseId, actor), "Enrolled");
     }
 
     @GetMapping
@@ -93,12 +93,14 @@ public class EnrollmentController {
                 return ResponseUtil.forbidden("Students cannot include archived enrollments");
             }
         }
-        return ResponseUtil.ok(enrollmentService.listByStudentGrouped(studentId, includeArchived), "OK");
+        return ResponseUtil.ok(
+                enrollmentService.listByStudentGrouped(studentId, includeArchived), "OK");
     }
 
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('admin','teacher')")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> byCourse(@PathVariable UUID courseId) {
+    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> byCourse(
+            @PathVariable UUID courseId) {
         return ResponseUtil.ok(enrollmentService.listByCourse(courseId), "OK");
     }
 
@@ -133,7 +135,8 @@ public class EnrollmentController {
     public ResponseEntity<ApiResponse<EnrollmentResponse>> reactivate(
             @PathVariable UUID enrollmentId, @AuthenticationPrincipal Jwt jwt) {
         UUID actor = UUID.fromString(jwt.getSubject());
-        return ResponseUtil.ok(enrollmentService.reactivate(enrollmentId, actor), "Enrollment reactivated");
+        return ResponseUtil.ok(
+                enrollmentService.reactivate(enrollmentId, actor), "Enrollment reactivated");
     }
 
     @PostMapping("/move-to-advanced")

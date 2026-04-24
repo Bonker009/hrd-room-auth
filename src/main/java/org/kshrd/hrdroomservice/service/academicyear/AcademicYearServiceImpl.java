@@ -1,6 +1,5 @@
 package org.kshrd.hrdroomservice.service.academicyear;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,10 +9,11 @@ import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.CourseType;
 import org.kshrd.hrdroomservice.domain.YearStatus;
+import org.kshrd.hrdroomservice.mapper.AcademicYearEntityMapper;
 import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
 import org.kshrd.hrdroomservice.persistence.entity.CourseEntity;
-import org.kshrd.hrdroomservice.persistence.mapper.AcademicYearMapper;
-import org.kshrd.hrdroomservice.persistence.mapper.CourseMapper;
+import org.kshrd.hrdroomservice.persistence.repository.AcademicYearRepository;
+import org.kshrd.hrdroomservice.persistence.repository.CourseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -22,8 +22,9 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class AcademicYearServiceImpl implements AcademicYearService {
 
-    private final AcademicYearMapper academicYearMapper;
-    private final CourseMapper courseMapper;
+    private final AcademicYearRepository academicYearRepository;
+    private final CourseRepository courseRepository;
+    private final AcademicYearEntityMapper academicYearMapper;
 
     @Override
     @Transactional
@@ -34,89 +35,70 @@ public class AcademicYearServiceImpl implements AcademicYearService {
         if (request.endDate().isBefore(request.startDate())) {
             throw ApiException.badRequest("endDate must be after startDate");
         }
-        AcademicYearEntity row = new AcademicYearEntity();
-        row.setAcademicYearId(UUID.randomUUID());
-        row.setName(request.name().trim());
-        row.setGeneration(request.generation());
-        row.setStatus(YearStatus.ARCHIVED.name());
-        row.setStartDate(request.startDate());
-        row.setEndDate(request.endDate());
-        row.setVersion(0L);
-        row.setCreatedBy(actorId);
-        row.setUpdatedBy(actorId);
-        row.setCreatedAt(LocalDateTime.now());
-        academicYearMapper.insert(row);
+        AcademicYearEntity row = academicYearMapper.toNewEntity(request);
+        academicYearRepository.save(row);
         return toResponse(row);
     }
 
     @Override
     @Transactional
     public AcademicYearResponse activate(UUID academicYearId, UUID actorId) {
-        AcademicYearEntity target = academicYearMapper.findById(academicYearId);
-        if (target == null) {
-            throw ApiException.notFound("Academic year not found");
-        }
+        AcademicYearEntity target =
+                academicYearRepository
+                        .findById(academicYearId)
+                        .orElseThrow(() -> ApiException.notFound("Academic year not found"));
         if (YearStatus.ACTIVE.name().equals(target.getStatus())) {
             return toResponse(target);
         }
-        academicYearMapper.archiveAllActive(actorId);
-        academicYearMapper.activate(academicYearId, actorId);
-        seedCoursesIfMissing(academicYearId, actorId);
-        AcademicYearEntity refreshed = academicYearMapper.findById(academicYearId);
-        return toResponse(refreshed);
+        academicYearRepository.archiveAllActive(actorId);
+        target.setStatus(YearStatus.ACTIVE.name());
+        academicYearRepository.save(target);
+        seedCoursesIfMissing(academicYearId);
+        return toResponse(
+                academicYearRepository
+                        .findById(academicYearId)
+                        .orElseThrow(() -> ApiException.notFound("Academic year not found")));
     }
 
-    private void seedCoursesIfMissing(UUID academicYearId, UUID actorId) {
-        if (courseMapper.countByAcademicYearId(academicYearId) > 0) {
+    private void seedCoursesIfMissing(UUID academicYearId) {
+        if (courseRepository.countByAcademicYearId(academicYearId) > 0) {
             return;
         }
-        UUID basicId = UUID.randomUUID();
-        CourseEntity basic = new CourseEntity();
-        basic.setCourseId(basicId);
-        basic.setName("BASIC");
-        basic.setType(CourseType.BASIC.name());
-        basic.setAcademicYearId(academicYearId);
-        basic.setDescription("Seeded BASIC course");
-        basic.setIsArchived(false);
-        basic.setVersion(0L);
-        basic.setCreatedBy(actorId);
-        basic.setUpdatedBy(actorId);
-        basic.setCreatedAt(LocalDateTime.now());
-        courseMapper.insert(basic);
+        CourseEntity basic =
+                academicYearMapper.toNewCourseEntity(
+                        "BASIC",
+                        CourseType.BASIC.name(),
+                        "Seeded BASIC course",
+                        academicYearId,
+                        null);
+        courseRepository.save(basic);
 
-        CourseEntity advanced = new CourseEntity();
-        advanced.setCourseId(UUID.randomUUID());
-        advanced.setName("ADVANCED");
-        advanced.setType(CourseType.ADVANCED.name());
-        advanced.setAcademicYearId(academicYearId);
-        advanced.setPrerequisiteCourseId(basicId);
-        advanced.setDescription("Seeded ADVANCED course");
-        advanced.setIsArchived(false);
-        advanced.setVersion(0L);
-        advanced.setCreatedBy(actorId);
-        advanced.setUpdatedBy(actorId);
-        advanced.setCreatedAt(LocalDateTime.now());
-        courseMapper.insert(advanced);
+        CourseEntity advanced =
+                academicYearMapper.toNewCourseEntity(
+                        "ADVANCED",
+                        CourseType.ADVANCED.name(),
+                        "Seeded ADVANCED course",
+                        academicYearId,
+                        basic.getCourseId());
+        courseRepository.save(advanced);
     }
 
     @Override
     @Transactional
     public AcademicYearResponse archive(UUID academicYearId, UUID actorId) {
-        AcademicYearEntity target = academicYearMapper.findById(academicYearId);
-        if (target == null) {
-            throw ApiException.notFound("Academic year not found");
-        }
+        AcademicYearEntity target =
+                academicYearRepository
+                        .findById(academicYearId)
+                        .orElseThrow(() -> ApiException.notFound("Academic year not found"));
         if (!YearStatus.ACTIVE.name().equals(target.getStatus())) {
             throw ApiException.badRequest("Academic year is not active");
         }
-        if (academicYearMapper.countActive() == 1) {
-            throw ApiException.badRequest("Cannot archive the only active year without activating another first");
+        if (academicYearRepository.countByStatus(YearStatus.ACTIVE.name()) == 1) {
+            throw ApiException.badRequest(
+                    "Cannot archive the only active year without activating another first");
         }
-        int updated = academicYearMapper.archiveOne(academicYearId, actorId);
-        if (updated == 0) {
-            throw ApiException.badRequest("Unable to archive academic year");
-        }
-        return toResponse(academicYearMapper.findById(academicYearId));
+        target.setStatus(YearStatus.ARCHIVED.name());
+        return toResponse(academicYearRepository.save(target));
     }
 
     @Override
@@ -128,27 +110,33 @@ public class AcademicYearServiceImpl implements AcademicYearService {
     @Override
     @Transactional(readOnly = true)
     public Optional<AcademicYearResponse> findActive() {
-        AcademicYearEntity active = academicYearMapper.findActive();
-        if (active == null) {
-            return Optional.empty();
-        }
-        return Optional.of(toResponse(active));
+        return academicYearRepository
+                .findFirstByStatus(YearStatus.ACTIVE.name())
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AcademicYearResponse getById(UUID id) {
-        AcademicYearEntity row = academicYearMapper.findById(id);
-        if (row == null) {
-            throw ApiException.notFound("Academic year not found");
-        }
-        return toResponse(row);
+        return academicYearRepository
+                .findById(id)
+                .map(this::toResponse)
+                .orElseThrow(() -> ApiException.notFound("Academic year not found"));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AcademicYearResponse> list(boolean includeArchived) {
-        return academicYearMapper.findAll(includeArchived).stream().map(this::toResponse).toList();
+        if (includeArchived) {
+            return academicYearRepository.findAllByOrderByStartDateDesc().stream()
+                    .map(this::toResponse)
+                    .toList();
+        }
+        return academicYearRepository
+                .findByStatusOrderByStartDateDesc(YearStatus.ACTIVE.name())
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private AcademicYearResponse toResponse(AcademicYearEntity e) {

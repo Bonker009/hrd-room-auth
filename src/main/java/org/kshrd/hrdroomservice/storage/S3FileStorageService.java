@@ -30,7 +30,8 @@ public class S3FileStorageService implements FileStorageService {
 
     @Override
     public FileUploadResult uploadFile(MultipartFile file, String folderPrefix) {
-        String safePrefix = folderPrefix == null ? "uploads" : folderPrefix.replaceAll("^/+|/+$", "");
+        String safePrefix =
+                folderPrefix == null ? "uploads" : folderPrefix.replaceAll("^/+|/+$", "");
         String ext = extensionOf(file.getOriginalFilename(), file.getContentType());
         String key = safePrefix + "/" + UUID.randomUUID() + ext;
         try {

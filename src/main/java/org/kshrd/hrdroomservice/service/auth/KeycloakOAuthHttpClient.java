@@ -16,7 +16,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 /**
- * Timeout-aware HTTP calls to Keycloak OIDC token and logout endpoints (password grant, refresh, logout).
+ * Timeout-aware HTTP calls to Keycloak OIDC token and logout endpoints (password grant, refresh,
+ * logout).
  */
 final class KeycloakOAuthHttpClient {
 
@@ -100,7 +101,9 @@ final class KeycloakOAuthHttpClient {
                     restClient
                             .post()
                             .uri(tokenUrl())
-                            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                            .header(
+                                    HttpHeaders.CONTENT_TYPE,
+                                    MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                             .body(form)
                             .retrieve()
                             .body(String.class);

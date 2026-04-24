@@ -1,10 +1,8 @@
 package org.kshrd.hrdroomservice.config.security;
 
 import java.time.Duration;
-
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Data
 @ConfigurationProperties(prefix = "keycloak.auth")

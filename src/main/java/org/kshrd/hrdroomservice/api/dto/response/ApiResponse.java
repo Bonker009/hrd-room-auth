@@ -17,7 +17,8 @@ public record ApiResponse<T>(
         return new ApiResponse<>(true, statusCode, message, data, Instant.now(), null, null);
     }
 
-    public static <T> ApiResponse<T> error(int statusCode, String message, String errorCode, String path) {
+    public static <T> ApiResponse<T> error(
+            int statusCode, String message, String errorCode, String path) {
         return new ApiResponse<>(false, statusCode, message, null, Instant.now(), errorCode, path);
     }
 }

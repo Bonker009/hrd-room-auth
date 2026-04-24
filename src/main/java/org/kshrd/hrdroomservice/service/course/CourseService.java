@@ -9,7 +9,8 @@ public interface CourseService {
 
     CourseResponse update(UUID courseId, CourseUpdateRequest request, UUID actorId);
 
-    List<CourseResponse> list(String type, UUID academicYearId, boolean includeArchived, boolean onlyActiveYears);
+    List<CourseResponse> list(
+            String type, UUID academicYearId, boolean includeArchived, boolean onlyActiveYears);
 
     CourseResponse getById(UUID courseId);
 }

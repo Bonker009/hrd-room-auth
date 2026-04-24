@@ -1,5 +1,4 @@
 server:
-  # Port: project-root .env (loaded at startup), env APP_PORT / SERVER_PORT, or -Dserver.port=...
   port: ${APP_PORT:${SERVER_PORT:8080}}
 
 spring:
@@ -10,6 +9,13 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -23,11 +29,6 @@ spring:
         jwt:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/assessment}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/assessment/protocol/openid-connect/certs}
-
-mybatis:
-  type-handlers-package: org.kshrd.hrdroomservice.persistence.typehandler
-  configuration:
-    map-underscore-to-camel-case: true
 
 management:
   endpoints:
@@ -75,6 +76,5 @@ spring:
   config:
     activate:
       on-profile: docker
-# In Docker, listen on 8080 inside the container (matches Dockerfile EXPOSE and compose mapping).
 server:
   port: 8080

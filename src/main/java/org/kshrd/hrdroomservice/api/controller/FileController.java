@@ -28,14 +28,16 @@ public class FileController {
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Map<String, String>>> upload(
-            @RequestPart("file") MultipartFile file, @RequestParam(defaultValue = "uploads") String folder) {
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(defaultValue = "uploads") String folder) {
         if (file.isEmpty()) {
             throw ApiException.badRequest("File is required");
         }
 
         FileUploadResult result = fileStorageService.uploadFile(file, folder);
         return ResponseUtil.ok(
-                Map.of("url", result.url(), "key", result.key(), "filename", result.filename()), "File uploaded");
+                Map.of("url", result.url(), "key", result.key(), "filename", result.filename()),
+                "File uploaded");
     }
 
     @GetMapping("/preview")

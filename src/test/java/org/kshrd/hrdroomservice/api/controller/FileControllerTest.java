@@ -42,7 +42,8 @@ class FileControllerTest {
                                 "https://files.local/avatar.png",
                                 "avatar.png"));
 
-        mockMvc().perform(multipart("/api/v4/files/upload").file(file).param("folder", "classrooms"))
+        mockMvc()
+                .perform(multipart("/api/v4/files/upload").file(file).param("folder", "classrooms"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.url").value("https://files.local/avatar.png"))
@@ -56,9 +57,11 @@ class FileControllerTest {
 
     @Test
     void upload_emptyFile_returnsBadRequest() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+        MockMultipartFile file =
+                new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
 
-        mockMvc().perform(multipart("/api/v4/files/upload").file(file))
+        mockMvc()
+                .perform(multipart("/api/v4/files/upload").file(file))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.detail").value("File is required"));
@@ -75,7 +78,8 @@ class FileControllerTest {
                                 "https://files.local/default.png",
                                 "avatar.png"));
 
-        mockMvc().perform(multipart("/api/v4/files/upload").file(file))
+        mockMvc()
+                .perform(multipart("/api/v4/files/upload").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.url").value("https://files.local/default.png"));
     }
@@ -85,17 +89,21 @@ class FileControllerTest {
         when(fileStorageService.previewFile("classrooms/a.png"))
                 .thenReturn("https://files.local/bucket/classrooms/a.png");
 
-        mockMvc().perform(get("/api/v4/files/preview").param("key", "classrooms/a.png"))
+        mockMvc()
+                .perform(get("/api/v4/files/preview").param("key", "classrooms/a.png"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.url").value("https://files.local/bucket/classrooms/a.png"));
+                .andExpect(
+                        jsonPath("$.data.url")
+                                .value("https://files.local/bucket/classrooms/a.png"));
 
         verify(fileStorageService).previewFile("classrooms/a.png");
     }
 
     @Test
     void preview_blankKey_returnsBadRequest() throws Exception {
-        mockMvc().perform(get("/api/v4/files/preview").param("key", " "))
+        mockMvc()
+                .perform(get("/api/v4/files/preview").param("key", " "))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.detail").value("File key is required"));

@@ -1,6 +1,7 @@
 package org.kshrd.hrdroomservice.service.classroom;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,16 +17,25 @@ import org.kshrd.hrdroomservice.api.dto.classroom.UuidListRequest;
 import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.YearStatus;
+import org.kshrd.hrdroomservice.mapper.ClassroomEntityMapper;
 import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
-import org.kshrd.hrdroomservice.persistence.entity.AssessmentEntity;
+import org.kshrd.hrdroomservice.persistence.entity.AssessmentClassroomEntity;
 import org.kshrd.hrdroomservice.persistence.entity.ClassroomEntity;
+import org.kshrd.hrdroomservice.persistence.entity.ClassroomStudentEntity;
 import org.kshrd.hrdroomservice.persistence.entity.ClassroomStudentRow;
+import org.kshrd.hrdroomservice.persistence.entity.ClassroomSubjectEntity;
 import org.kshrd.hrdroomservice.persistence.entity.ClassroomSubjectRow;
+import org.kshrd.hrdroomservice.persistence.entity.ClassroomTeacherEntity;
 import org.kshrd.hrdroomservice.persistence.entity.ClassroomTeacherRow;
-import org.kshrd.hrdroomservice.persistence.mapper.AcademicYearMapper;
-import org.kshrd.hrdroomservice.persistence.mapper.ClassroomMapper;
-import org.kshrd.hrdroomservice.persistence.mapper.ClassroomRelationMapper;
+import org.kshrd.hrdroomservice.persistence.repository.AcademicYearRepository;
+import org.kshrd.hrdroomservice.persistence.repository.AssessmentClassroomRepository;
+import org.kshrd.hrdroomservice.persistence.repository.AssessmentRepository;
+import org.kshrd.hrdroomservice.persistence.repository.ClassroomRepository;
+import org.kshrd.hrdroomservice.persistence.repository.ClassroomStudentRepository;
+import org.kshrd.hrdroomservice.persistence.repository.ClassroomSubjectRepository;
+import org.kshrd.hrdroomservice.persistence.repository.ClassroomTeacherRepository;
 import org.kshrd.hrdroomservice.storage.FileStorageService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -37,77 +47,74 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     private static final long MAX_IMAGE_BYTES = 20L * 1024 * 1024;
 
-    private final ClassroomMapper classroomMapper;
-    private final ClassroomRelationMapper relationMapper;
-    private final AcademicYearMapper academicYearMapper;
+    private final ClassroomRepository classroomRepository;
+    private final ClassroomTeacherRepository classroomTeacherRepository;
+    private final ClassroomStudentRepository classroomStudentRepository;
+    private final ClassroomSubjectRepository classroomSubjectRepository;
+    private final AssessmentClassroomRepository assessmentClassroomRepository;
+    private final AssessmentRepository assessmentRepository;
+    private final AcademicYearRepository academicYearRepository;
     private final FileStorageService fileStorageService;
+    private final ClassroomEntityMapper classroomMapper;
 
     @Override
     @Transactional
     public ClassroomResponse create(ClassroomRequest request, UUID actorId) {
-        AcademicYearEntity active = academicYearMapper.findActive();
+        AcademicYearEntity active =
+                academicYearRepository.findFirstByStatus(YearStatus.ACTIVE.name()).orElse(null);
         if (active == null) {
             throw ApiException.badRequest("No active academic year");
         }
-        ClassroomEntity row = new ClassroomEntity();
-        row.setClassroomId(UUID.randomUUID());
-        row.setClassName(request.className().trim());
-        row.setClassroomAbbre(request.classroomAbbre().trim());
-        row.setDescription(request.description());
-        row.setImage(request.image());
-        row.setAcademicYearId(active.getAcademicYearId());
-        row.setCreatedBy(actorId);
-        row.setUpdatedBy(actorId);
-        row.setCreatedAt(LocalDateTime.now());
-        classroomMapper.insert(row);
+        ClassroomEntity row = classroomMapper.toNewEntity(request, active);
+        classroomRepository.save(row);
         if (request.subjectId() != null) {
-            relationMapper.insertSubject(row.getClassroomId(), request.subjectId());
+            insertSubjectIfMissing(row.getClassroomId(), request.subjectId());
         }
-        return toBasic(classroomMapper.findById(row.getClassroomId()));
+        return toBasic(classroomRepository.findById(row.getClassroomId()).orElseThrow());
     }
 
     @Override
     @Transactional
     public ClassroomResponse update(UUID classroomId, ClassroomRequest request, UUID actorId) {
-        ClassroomEntity existing = classroomMapper.findById(classroomId);
-        if (existing == null) {
-            throw ApiException.notFound("Classroom not found");
-        }
+        ClassroomEntity existing =
+                classroomRepository
+                        .findById(classroomId)
+                        .orElseThrow(() -> ApiException.notFound("Classroom not found"));
         existing.setClassName(request.className().trim());
         existing.setClassroomAbbre(request.classroomAbbre().trim());
         existing.setDescription(request.description());
         if (StringUtils.hasText(request.image())) {
             existing.setImage(request.image());
         }
-        existing.setUpdatedBy(actorId);
-        classroomMapper.update(existing);
-        return toBasic(classroomMapper.findById(classroomId));
+        classroomRepository.save(existing);
+        return toBasic(classroomRepository.findById(classroomId).orElseThrow());
     }
 
     @Override
     @Transactional
     public void delete(UUID classroomId) {
-        ClassroomEntity existing = classroomMapper.findById(classroomId);
+        ClassroomEntity existing = classroomRepository.findById(classroomId).orElse(null);
         if (existing == null) {
             throw ApiException.notFound("Classroom not found");
         }
-        relationMapper.deleteAllAssessments(classroomId);
-        relationMapper.deleteAllStudents(classroomId);
-        relationMapper.deleteAllSubjects(classroomId);
-        relationMapper.deleteAllTeachers(classroomId);
-        classroomMapper.delete(classroomId);
+        assessmentClassroomRepository.deleteByClassroomId(classroomId);
+        classroomStudentRepository.deleteByClassroomId(classroomId);
+        classroomSubjectRepository.deleteByClassroomId(classroomId);
+        classroomTeacherRepository.deleteByClassroomId(classroomId);
+        classroomRepository.deleteById(classroomId);
     }
 
     @Override
     @Transactional
     public String uploadImage(UUID classroomId, MultipartFile file, UUID actorId) {
-        ClassroomEntity existing = classroomMapper.findById(classroomId);
+        ClassroomEntity existing = classroomRepository.findById(classroomId).orElse(null);
         if (existing == null) {
             throw ApiException.notFound("Classroom not found");
         }
         validateImage(file);
         String url = fileStorageService.uploadFile(file, "classrooms").url();
-        classroomMapper.updateImage(classroomId, url, actorId);
+        existing.setImage(url);
+        classroomRepository.save(existing);
         return url;
     }
 
@@ -131,45 +138,40 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Override
     @Transactional(readOnly = true)
     public ClassroomResponse getById(UUID classroomId) {
-        ClassroomEntity row = classroomMapper.findById(classroomId);
-        if (row == null) {
-            throw ApiException.notFound("Classroom not found");
-        }
-        return toBasic(row);
+        return toBasic(
+                classroomRepository
+                        .findById(classroomId)
+                        .orElseThrow(() -> ApiException.notFound("Classroom not found")));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AssessmentSummaryResponse> listAssessments(UUID classroomId) {
-        if (classroomMapper.findById(classroomId) == null) {
+        if (classroomRepository.findById(classroomId).isEmpty()) {
             throw ApiException.notFound("Classroom not found");
         }
-        return relationMapper.listAssessments(classroomId).stream()
-                .map(this::toAssessmentSummary)
-                .toList();
-    }
-
-    private AssessmentSummaryResponse toAssessmentSummary(AssessmentEntity a) {
-        return new AssessmentSummaryResponse(a.getAssessmentId(), a.getName(), a.getAssessmentDate());
+        return assessmentRepository.findSummaryByClassroomId(classroomId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ClassroomResponse> myClassrooms(UUID teacherId, int page, int size) {
-        int offset = page * size;
-        long total = classroomMapper.countForTeacher(teacherId);
+        long total = classroomRepository.countForTeacher(teacherId);
         List<ClassroomResponse> content =
-                classroomMapper.pageForTeacher(teacherId, offset, size).stream().map(this::toBasic).toList();
+                classroomRepository.pageForTeacher(teacherId, PageRequest.of(page, size)).stream()
+                        .map(this::toBasic)
+                        .toList();
         return PageResponse.of(content, total, page, size);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ClassroomResponse> listAll(int page, int size) {
-        int offset = page * size;
-        long total = classroomMapper.countAll();
+        long total = classroomRepository.count();
         List<ClassroomResponse> content =
-                classroomMapper.pageAll(offset, size).stream().map(this::toBasic).toList();
+                classroomRepository.pageAll(PageRequest.of(page, size)).stream()
+                        .map(this::toBasic)
+                        .toList();
         return PageResponse.of(content, total, page, size);
     }
 
@@ -178,7 +180,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public void assignAssessments(UUID classroomId, AssessmentIdsRequest request) {
         ensureClassroom(classroomId);
         for (UUID id : request.assessmentIds()) {
-            relationMapper.insertAssessment(classroomId, id);
+            insertAssessmentIfMissing(classroomId, id);
         }
     }
 
@@ -189,13 +191,14 @@ public class ClassroomServiceImpl implements ClassroomService {
         if (request.assessmentIds() == null || request.assessmentIds().isEmpty()) {
             throw ApiException.badRequest("assessmentIds must not be empty");
         }
-        relationMapper.deleteAssessments(classroomId, request.assessmentIds());
+        assessmentClassroomRepository.deleteByClassroomIdAndAssessmentIdIn(
+                classroomId, request.assessmentIds());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ClassroomResponse> bySubject(UUID subjectId) {
-        return classroomMapper.findBySubject(subjectId).stream().map(this::toBasic).toList();
+        return classroomRepository.findBySubject(subjectId).stream().map(this::toBasic).toList();
     }
 
     @Override
@@ -203,7 +206,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public void assignTeachers(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
         for (UUID id : request.ids()) {
-            relationMapper.insertTeacher(classroomId, id);
+            insertTeacherIfMissing(classroomId, id);
         }
     }
 
@@ -212,7 +215,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public void removeTeachers(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
         for (UUID id : request.ids()) {
-            relationMapper.deleteTeacher(classroomId, id);
+            classroomTeacherRepository.deleteByClassroomIdAndTeacherId(classroomId, id);
         }
     }
 
@@ -220,17 +223,25 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional(readOnly = true)
     public List<UUID> listTeacherIds(UUID classroomId) {
         ensureClassroom(classroomId);
-        return relationMapper.listTeacherIds(classroomId);
+        return classroomTeacherRepository.findByClassroomIdOrderByAssignedAt(classroomId).stream()
+                .map(ClassroomTeacherEntity::getTeacherId)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ClassroomResponse> listWithTeachers() {
-        List<ClassroomEntity> rooms = classroomMapper.findAll();
-        Map<UUID, List<UUID>> teachers = groupTeachers(relationMapper.listAllTeacherAssignments());
+        List<ClassroomEntity> rooms = classroomRepository.findAllByOrderByCreatedAtDesc();
+        Map<UUID, List<UUID>> teachers =
+                groupTeachers(toTeacherRows(classroomTeacherRepository.findAll()));
         List<ClassroomResponse> out = new ArrayList<>();
         for (ClassroomEntity c : rooms) {
-            out.add(toWithRelations(c, teachers.getOrDefault(c.getClassroomId(), List.of()), List.of(), List.of()));
+            out.add(
+                    toWithRelations(
+                            c,
+                            teachers.getOrDefault(c.getClassroomId(), List.of()),
+                            List.of(),
+                            List.of()));
         }
         return out;
     }
@@ -239,31 +250,39 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void assignSubject(UUID classroomId, UUID subjectId) {
         ensureClassroom(classroomId);
-        relationMapper.insertSubject(classroomId, subjectId);
+        insertSubjectIfMissing(classroomId, subjectId);
     }
 
     @Override
     @Transactional
     public void removeSubject(UUID classroomId, UUID subjectId) {
         ensureClassroom(classroomId);
-        relationMapper.deleteSubject(classroomId, subjectId);
+        classroomSubjectRepository.deleteByClassroomIdAndSubjectId(classroomId, subjectId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<UUID> listSubjectIds(UUID classroomId) {
         ensureClassroom(classroomId);
-        return relationMapper.listSubjectIds(classroomId);
+        return classroomSubjectRepository.findByClassroomId(classroomId).stream()
+                .map(ClassroomSubjectEntity::getSubjectId)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ClassroomResponse> listWithSubjects() {
-        List<ClassroomEntity> rooms = classroomMapper.findAll();
-        Map<UUID, List<UUID>> subjects = groupSubjects(relationMapper.listAllSubjectAssignments());
+        List<ClassroomEntity> rooms = classroomRepository.findAllByOrderByCreatedAtDesc();
+        Map<UUID, List<UUID>> subjects =
+                groupSubjects(toSubjectRows(classroomSubjectRepository.findAll()));
         List<ClassroomResponse> out = new ArrayList<>();
         for (ClassroomEntity c : rooms) {
-            out.add(toWithRelations(c, List.of(), List.of(), subjects.getOrDefault(c.getClassroomId(), List.of())));
+            out.add(
+                    toWithRelations(
+                            c,
+                            List.of(),
+                            List.of(),
+                            subjects.getOrDefault(c.getClassroomId(), List.of())));
         }
         return out;
     }
@@ -273,7 +292,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public void assignStudents(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
         for (UUID id : request.ids()) {
-            relationMapper.insertStudent(classroomId, id);
+            insertStudentIfMissing(classroomId, id);
         }
     }
 
@@ -282,7 +301,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public void removeStudents(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
         for (UUID id : request.ids()) {
-            relationMapper.deleteStudent(classroomId, id);
+            classroomStudentRepository.deleteByClassroomIdAndStudentId(classroomId, id);
         }
     }
 
@@ -290,17 +309,25 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional(readOnly = true)
     public List<UUID> listStudentIds(UUID classroomId) {
         ensureClassroom(classroomId);
-        return relationMapper.listStudentIds(classroomId);
+        return classroomStudentRepository.findByClassroomIdOrderByAssignedAt(classroomId).stream()
+                .map(ClassroomStudentEntity::getStudentId)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ClassroomResponse> listWithStudents() {
-        List<ClassroomEntity> rooms = classroomMapper.findAll();
-        Map<UUID, List<UUID>> students = groupStudents(relationMapper.listAllStudentAssignments());
+        List<ClassroomEntity> rooms = classroomRepository.findAllByOrderByCreatedAtDesc();
+        Map<UUID, List<UUID>> students =
+                groupStudents(toStudentRows(classroomStudentRepository.findAll()));
         List<ClassroomResponse> out = new ArrayList<>();
         for (ClassroomEntity c : rooms) {
-            out.add(toWithRelations(c, List.of(), students.getOrDefault(c.getClassroomId(), List.of()), List.of()));
+            out.add(
+                    toWithRelations(
+                            c,
+                            List.of(),
+                            students.getOrDefault(c.getClassroomId(), List.of()),
+                            List.of()));
         }
         return out;
     }
@@ -308,14 +335,14 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Override
     @Transactional(readOnly = true)
     public List<ClassroomStudentCountResponse> studentCounts() {
-        return relationMapper.studentCounts();
+        return classroomStudentRepository.countStudentsPerClassroom();
     }
 
     @Override
     @Transactional
     public void moveStudent(UUID sourceClassroomId, UUID targetClassroomId, UUID studentId) {
-        ClassroomEntity src = classroomMapper.findById(sourceClassroomId);
-        ClassroomEntity dst = classroomMapper.findById(targetClassroomId);
+        ClassroomEntity src = classroomRepository.findById(sourceClassroomId).orElse(null);
+        ClassroomEntity dst = classroomRepository.findById(targetClassroomId).orElse(null);
         if (src == null || dst == null) {
             throw ApiException.notFound("Classroom not found");
         }
@@ -323,18 +350,103 @@ public class ClassroomServiceImpl implements ClassroomService {
                 || !src.getAcademicYearId().equals(dst.getAcademicYearId())) {
             throw ApiException.badRequest("Classrooms must belong to the same academic year");
         }
-        AcademicYearEntity year = academicYearMapper.findById(src.getAcademicYearId());
+        AcademicYearEntity year =
+                academicYearRepository.findById(src.getAcademicYearId()).orElse(null);
         if (year == null || !YearStatus.ACTIVE.name().equals(year.getStatus())) {
             throw ApiException.badRequest("Academic year must be active");
         }
-        relationMapper.deleteStudent(sourceClassroomId, studentId);
-        relationMapper.insertStudent(targetClassroomId, studentId);
+        classroomStudentRepository.deleteByClassroomIdAndStudentId(sourceClassroomId, studentId);
+        insertStudentIfMissing(targetClassroomId, studentId);
     }
 
     private void ensureClassroom(UUID classroomId) {
-        if (classroomMapper.findById(classroomId) == null) {
+        if (classroomRepository.findById(classroomId).isEmpty()) {
             throw ApiException.notFound("Classroom not found");
         }
+    }
+
+    private void insertTeacherIfMissing(UUID classroomId, UUID teacherId) {
+        if (classroomTeacherRepository.existsByClassroomIdAndTeacherId(classroomId, teacherId)) {
+            return;
+        }
+        ClassroomTeacherEntity entity = new ClassroomTeacherEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setClassroomId(classroomId);
+        entity.setTeacherId(teacherId);
+        entity.setAssignedAt(LocalDateTime.now());
+        classroomTeacherRepository.save(entity);
+    }
+
+    private void insertStudentIfMissing(UUID classroomId, UUID studentId) {
+        if (classroomStudentRepository.existsByClassroomIdAndStudentId(classroomId, studentId)) {
+            return;
+        }
+        ClassroomStudentEntity entity = new ClassroomStudentEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setClassroomId(classroomId);
+        entity.setStudentId(studentId);
+        entity.setAssignedAt(LocalDateTime.now());
+        classroomStudentRepository.save(entity);
+    }
+
+    private void insertSubjectIfMissing(UUID classroomId, UUID subjectId) {
+        if (classroomSubjectRepository.existsByClassroomIdAndSubjectId(classroomId, subjectId)) {
+            return;
+        }
+        ClassroomSubjectEntity entity = new ClassroomSubjectEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setClassroomId(classroomId);
+        entity.setSubjectId(subjectId);
+        classroomSubjectRepository.save(entity);
+    }
+
+    private void insertAssessmentIfMissing(UUID classroomId, UUID assessmentId) {
+        if (assessmentClassroomRepository.existsByClassroomIdAndAssessmentId(
+                classroomId, assessmentId)) {
+            return;
+        }
+        AssessmentClassroomEntity entity = new AssessmentClassroomEntity();
+        entity.setId(UUID.randomUUID());
+        entity.setClassroomId(classroomId);
+        entity.setAssessmentId(assessmentId);
+        entity.setAssignedAt(OffsetDateTime.now());
+        assessmentClassroomRepository.save(entity);
+    }
+
+    private List<ClassroomTeacherRow> toTeacherRows(List<ClassroomTeacherEntity> entities) {
+        return entities.stream()
+                .map(
+                        e -> {
+                            ClassroomTeacherRow row = new ClassroomTeacherRow();
+                            row.setClassroomId(e.getClassroomId());
+                            row.setTeacherId(e.getTeacherId());
+                            return row;
+                        })
+                .toList();
+    }
+
+    private List<ClassroomSubjectRow> toSubjectRows(List<ClassroomSubjectEntity> entities) {
+        return entities.stream()
+                .map(
+                        e -> {
+                            ClassroomSubjectRow row = new ClassroomSubjectRow();
+                            row.setClassroomId(e.getClassroomId());
+                            row.setSubjectId(e.getSubjectId());
+                            return row;
+                        })
+                .toList();
+    }
+
+    private List<ClassroomStudentRow> toStudentRows(List<ClassroomStudentEntity> entities) {
+        return entities.stream()
+                .map(
+                        e -> {
+                            ClassroomStudentRow row = new ClassroomStudentRow();
+                            row.setClassroomId(e.getClassroomId());
+                            row.setStudentId(e.getStudentId());
+                            return row;
+                        })
+                .toList();
     }
 
     private Map<UUID, List<UUID>> groupTeachers(List<ClassroomTeacherRow> rows) {
@@ -366,7 +478,10 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     private ClassroomResponse toWithRelations(
-            ClassroomEntity e, List<UUID> teacherIds, List<UUID> studentIds, List<UUID> subjectIds) {
+            ClassroomEntity e,
+            List<UUID> teacherIds,
+            List<UUID> studentIds,
+            List<UUID> subjectIds) {
         return new ClassroomResponse(
                 e.getClassroomId(),
                 e.getClassName(),

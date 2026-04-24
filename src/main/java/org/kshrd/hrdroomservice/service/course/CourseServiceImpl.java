@@ -1,6 +1,5 @@
 package org.kshrd.hrdroomservice.service.course;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +9,11 @@ import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.YearStatus;
 import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
 import org.kshrd.hrdroomservice.persistence.entity.CourseEntity;
-import org.kshrd.hrdroomservice.persistence.mapper.AcademicYearMapper;
-import org.kshrd.hrdroomservice.persistence.mapper.CourseMapper;
+import org.kshrd.hrdroomservice.persistence.repository.AcademicYearRepository;
+import org.kshrd.hrdroomservice.persistence.repository.CourseRepository;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,35 +21,39 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CourseServiceImpl implements CourseService {
 
-    private final CourseMapper courseMapper;
-    private final AcademicYearMapper academicYearMapper;
+    private final CourseRepository courseRepository;
+    private final AcademicYearRepository academicYearRepository;
 
     @Override
     @Transactional
     public CourseResponse update(UUID courseId, CourseUpdateRequest request, UUID actorId) {
-        CourseEntity course = courseMapper.findById(courseId);
-        if (course == null) {
-            throw ApiException.notFound("Course not found");
-        }
-        AcademicYearEntity year = academicYearMapper.findById(course.getAcademicYearId());
+        CourseEntity course =
+                courseRepository
+                        .findById(courseId)
+                        .orElseThrow(() -> ApiException.notFound("Course not found"));
+        AcademicYearEntity year =
+                academicYearRepository.findById(course.getAcademicYearId()).orElse(null);
         if (year == null || !YearStatus.ACTIVE.name().equals(year.getStatus())) {
             throw ApiException.badRequest("Course must belong to an active academic year");
         }
-        long version = course.getVersion() == null ? 0L : course.getVersion();
-        int updated =
-                courseMapper.updateNameDescription(
-                        courseId, request.name(), request.description(), version, actorId);
-        if (updated == 0) {
+        course.setName(request.name());
+        course.setDescription(request.description());
+        try {
+            return toResponse(courseRepository.saveAndFlush(course));
+        } catch (ObjectOptimisticLockingFailureException ex) {
             throw ApiException.conflict("Course was modified concurrently");
         }
-        return toResponse(courseMapper.findById(courseId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CourseResponse> list(
             String type, UUID academicYearId, boolean includeArchived, boolean onlyActiveYears) {
-        return courseMapper.search(type, academicYearId, includeArchived, onlyActiveYears).stream()
+        return courseRepository
+                .findAll(
+                        withFilters(type, academicYearId, includeArchived, onlyActiveYears),
+                        Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -55,11 +61,40 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(readOnly = true)
     public CourseResponse getById(UUID courseId) {
-        CourseEntity course = courseMapper.findById(courseId);
-        if (course == null) {
-            throw ApiException.notFound("Course not found");
-        }
-        return toResponse(course);
+        return toResponse(
+                courseRepository
+                        .findById(courseId)
+                        .orElseThrow(() -> ApiException.notFound("Course not found")));
+    }
+
+    private Specification<CourseEntity> withFilters(
+            String type, UUID academicYearId, boolean includeArchived, boolean onlyActiveYears) {
+        return (root, query, cb) -> {
+            var predicate = cb.conjunction();
+            if (type != null && !type.isBlank()) {
+                predicate = cb.and(predicate, cb.equal(root.get("type"), type));
+            }
+            if (academicYearId != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("academicYearId"), academicYearId));
+            }
+            if (!includeArchived) {
+                predicate =
+                        cb.and(
+                                predicate,
+                                cb.or(
+                                        cb.isFalse(root.get("isArchived")),
+                                        cb.isNull(root.get("isArchived"))));
+            }
+            if (onlyActiveYears) {
+                var activeYearSubquery = query.subquery(UUID.class);
+                var yearRoot = activeYearSubquery.from(AcademicYearEntity.class);
+                activeYearSubquery
+                        .select(yearRoot.get("academicYearId"))
+                        .where(cb.equal(yearRoot.get("status"), YearStatus.ACTIVE.name()));
+                predicate = cb.and(predicate, root.get("academicYearId").in(activeYearSubquery));
+            }
+            return predicate;
+        };
     }
 
     private CourseResponse toResponse(CourseEntity c) {

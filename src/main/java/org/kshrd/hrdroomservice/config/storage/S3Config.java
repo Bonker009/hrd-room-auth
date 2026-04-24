@@ -21,15 +21,20 @@ public class S3Config {
 
     @Bean
     S3Client s3Client() {
-        if (rustFsProperties.getEndpointUrl() == null || rustFsProperties.getEndpointUrl().isBlank()) {
-            throw new IllegalStateException("rustfs.endpoint-url is required when rustfs.enabled=true");
+        if (rustFsProperties.getEndpointUrl() == null
+                || rustFsProperties.getEndpointUrl().isBlank()) {
+            throw new IllegalStateException(
+                    "rustfs.endpoint-url is required when rustfs.enabled=true");
         }
         if (rustFsProperties.getAccessKeyId() == null
                 || rustFsProperties.getSecretAccessKey() == null) {
-            throw new IllegalStateException("RustFS access key and secret are required when rustfs.enabled=true");
+            throw new IllegalStateException(
+                    "RustFS access key and secret are required when rustfs.enabled=true");
         }
-        if (rustFsProperties.getBucketName() == null || rustFsProperties.getBucketName().isBlank()) {
-            throw new IllegalStateException("rustfs.bucket-name is required when rustfs.enabled=true");
+        if (rustFsProperties.getBucketName() == null
+                || rustFsProperties.getBucketName().isBlank()) {
+            throw new IllegalStateException(
+                    "rustfs.bucket-name is required when rustfs.enabled=true");
         }
         AwsBasicCredentials credentials =
                 AwsBasicCredentials.create(
@@ -37,7 +42,8 @@ public class S3Config {
         S3Configuration s3Configuration =
                 S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
-                        // Browser-friendly presigned GETs with third-party S3 endpoints (RustFS/MinIO)
+                        // Browser-friendly presigned GETs with third-party S3 endpoints
+                        // (RustFS/MinIO)
                         .checksumValidationEnabled(false)
                         .build();
         return S3Client.builder()

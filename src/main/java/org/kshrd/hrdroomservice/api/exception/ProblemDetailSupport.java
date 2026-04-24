@@ -21,7 +21,9 @@ final class ProblemDetailSupport {
     static ProblemDetail fromApiException(ApiException ex, HttpServletRequest req) {
         HttpStatusCode statusCode = ex.getStatus();
         String title =
-                ex.getProblemTitle() != null ? ex.getProblemTitle() : titleForErrorCode(ex.getErrorCode(), ex.getStatus());
+                ex.getProblemTitle() != null
+                        ? ex.getProblemTitle()
+                        : titleForErrorCode(ex.getErrorCode(), ex.getStatus());
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(statusCode, ex.getMessage());
         pd.setTitle(title);
         pd.setType(TYPE_BLANK);
@@ -33,7 +35,8 @@ final class ProblemDetailSupport {
         return pd;
     }
 
-    static ProblemDetail fromValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+    static ProblemDetail fromValidation(
+            MethodArgumentNotValidException ex, HttpServletRequest req) {
         String detail =
                 ex.getBindingResult().getFieldErrors().stream()
                         .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
@@ -58,7 +61,8 @@ final class ProblemDetailSupport {
         return m;
     }
 
-    static ProblemDetail simple(int status, String title, String detail, String errorCode, HttpServletRequest req) {
+    static ProblemDetail simple(
+            int status, String title, String detail, String errorCode, HttpServletRequest req) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(status), detail);
         pd.setTitle(title);
         pd.setType(TYPE_BLANK);

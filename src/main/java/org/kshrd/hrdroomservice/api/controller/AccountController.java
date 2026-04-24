@@ -32,7 +32,9 @@ public class AccountController {
     public ResponseEntity<ApiResponse<AuthMeResponse>> me(@AuthenticationPrincipal Jwt jwt) {
         UUID studentId = parseStudentId(jwt.getSubject());
         Optional<ActiveAcademicContext> ctx =
-                studentId == null ? Optional.empty() : activeAcademicContextService.resolveForStudent(studentId);
+                studentId == null
+                        ? Optional.empty()
+                        : activeAcademicContextService.resolveForStudent(studentId);
         AuthMeResponse body =
                 new AuthMeResponse(
                         jwt.getSubject(),

@@ -73,7 +73,9 @@ public class KeycloakAuthService implements AuthService {
         } catch (Exception ex) {
             log.warn("Keycloak login unexpected failure: realm={}", properties.getRealm(), ex);
             throw new ApiException(
-                    HttpStatus.BAD_GATEWAY, "Authentication failed with identity provider", "UPSTREAM_ERROR");
+                    HttpStatus.BAD_GATEWAY,
+                    "Authentication failed with identity provider",
+                    "UPSTREAM_ERROR");
         }
     }
 
@@ -96,7 +98,9 @@ public class KeycloakAuthService implements AuthService {
         } catch (Exception ex) {
             log.warn("Keycloak refresh unexpected failure: realm={}", properties.getRealm(), ex);
             throw new ApiException(
-                    HttpStatus.BAD_GATEWAY, "Token refresh failed with identity provider", "UPSTREAM_ERROR");
+                    HttpStatus.BAD_GATEWAY,
+                    "Token refresh failed with identity provider",
+                    "UPSTREAM_ERROR");
         }
     }
 
@@ -116,13 +120,13 @@ public class KeycloakAuthService implements AuthService {
     @Override
     public RegisteredUserResponse register(RegisterRequest request) {
         try (Keycloak admin =
-                     KeycloakBuilder.builder()
-                             .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
-                             .realm(properties.getRealm())
-                             .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
-                             .clientId(properties.getClientId())
-                             .clientSecret(properties.getClientSecret())
-                             .build()) {
+                KeycloakBuilder.builder()
+                        .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
+                        .realm(properties.getRealm())
+                        .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                        .clientId(properties.getClientId())
+                        .clientSecret(properties.getClientSecret())
+                        .build()) {
 
             UserRepresentation user = new UserRepresentation();
             user.setEnabled(true);
@@ -262,7 +266,8 @@ public class KeycloakAuthService implements AuthService {
         String error = extractJsonValue(body, KEYCLOAK_OAUTH_ERROR);
         String description = extractJsonValue(body, KEYCLOAK_OAUTH_ERROR_DESCRIPTION);
         if ("invalid_grant".equals(error)) {
-            if (description != null && description.toLowerCase().contains("invalid user credentials")) {
+            if (description != null
+                    && description.toLowerCase().contains("invalid user credentials")) {
                 return new ApiException(
                         HttpStatus.UNAUTHORIZED,
                         "Invalid username or password",
@@ -281,7 +286,8 @@ public class KeycloakAuthService implements AuthService {
                         null,
                         "Authentication failed");
             }
-            if (description != null && description.toLowerCase().contains("account is not fully set up")) {
+            if (description != null
+                    && description.toLowerCase().contains("account is not fully set up")) {
                 return new ApiException(
                         HttpStatus.UNAUTHORIZED,
                         "Your account is not fully set up in Keycloak. Please complete required actions and try again.",
@@ -315,7 +321,8 @@ public class KeycloakAuthService implements AuthService {
                     "Authentication failed");
         }
         if (status == 401) {
-            return new ApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password", "AUTH_FAILED");
+            return new ApiException(
+                    HttpStatus.UNAUTHORIZED, "Invalid username or password", "AUTH_FAILED");
         }
         return new ApiException(
                 HttpStatus.BAD_GATEWAY,

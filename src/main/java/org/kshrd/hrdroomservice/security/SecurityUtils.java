@@ -35,7 +35,8 @@ public final class SecurityUtils {
         }
         String target = "ROLE_" + role.toLowerCase();
         return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority).filter(Objects::nonNull)
+                .map(GrantedAuthority::getAuthority)
+                .filter(Objects::nonNull)
                 .anyMatch(a -> a.equalsIgnoreCase(target));
     }
 

@@ -44,11 +44,14 @@ public class SecurityConfig {
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtRoleConverter);
 
         http.oauth2ResourceServer(
-                oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+                oauth2 ->
+                        oauth2.jwt(
+                                jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
 
         http.exceptionHandling(
-                ex -> ex.authenticationEntryPoint(authenticationEntryPoint)
-                        .accessDeniedHandler(accessDeniedHandler));
+                ex ->
+                        ex.authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler));
 
         http.authorizeHttpRequests(
                 auth ->

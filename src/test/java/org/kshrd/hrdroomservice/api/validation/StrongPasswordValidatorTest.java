@@ -42,7 +42,9 @@ class StrongPasswordValidatorTest {
                 new RegisterRequest("user1", "user1@example.com", "password", "A", "B");
         Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
-        assertThat(violations.stream().anyMatch(v -> v.getPropertyPath().toString().equals("password")))
+        assertThat(
+                        violations.stream()
+                                .anyMatch(v -> v.getPropertyPath().toString().equals("password")))
                 .isTrue();
     }
 

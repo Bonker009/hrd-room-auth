@@ -3,21 +3,15 @@ package org.kshrd.hrdroomservice;
 import io.github.cdimascio.dotenv.Dotenv;
 import java.util.HashMap;
 import java.util.Map;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("org.kshrd.hrdroomservice.persistence.mapper")
 public class HrdRoomServiceApplication {
 
     public static void main(String[] args) {
         Dotenv dotenv =
-                Dotenv.configure()
-                        .directory(".")
-                        .ignoreIfMalformed()
-                        .ignoreIfMissing()
-                        .load();
+                Dotenv.configure().directory(".").ignoreIfMalformed().ignoreIfMissing().load();
         Map<String, Object> fromEnv = new HashMap<>();
         dotenv.entries().forEach(e -> fromEnv.put(e.getKey(), e.getValue()));
 

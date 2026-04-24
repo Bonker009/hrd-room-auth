@@ -1,0 +1,22 @@
+app:
+  security:
+    enabled: false
+
+rustfs:
+  enabled: false
+
+keycloak:
+  auth:
+    auth-server-url: http://localhost:0
+    realm: test
+    client-id: test
+    client-secret: test
+
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
