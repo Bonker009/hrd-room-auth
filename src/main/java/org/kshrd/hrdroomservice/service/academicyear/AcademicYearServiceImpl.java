@@ -28,19 +28,19 @@ public class AcademicYearServiceImpl implements AcademicYearService {
     @Override
     @Transactional
     public AcademicYearResponse create(AcademicYearRequest request, UUID actorId) {
-        if (!StringUtils.hasText(request.getName())) {
+        if (!StringUtils.hasText(request.name())) {
             throw ApiException.badRequest("Academic year name is required");
         }
-        if (request.getEndDate().isBefore(request.getStartDate())) {
+        if (request.endDate().isBefore(request.startDate())) {
             throw ApiException.badRequest("endDate must be after startDate");
         }
         AcademicYearEntity row = new AcademicYearEntity();
         row.setAcademicYearId(UUID.randomUUID());
-        row.setName(request.getName().trim());
-        row.setGeneration(request.getGeneration());
+        row.setName(request.name().trim());
+        row.setGeneration(request.generation());
         row.setStatus(YearStatus.ARCHIVED.name());
-        row.setStartDate(request.getStartDate());
-        row.setEndDate(request.getEndDate());
+        row.setStartDate(request.startDate());
+        row.setEndDate(request.endDate());
         row.setVersion(0L);
         row.setCreatedBy(actorId);
         row.setUpdatedBy(actorId);
@@ -152,16 +152,15 @@ public class AcademicYearServiceImpl implements AcademicYearService {
     }
 
     private AcademicYearResponse toResponse(AcademicYearEntity e) {
-        return AcademicYearResponse.builder()
-                .academicYearId(e.getAcademicYearId())
-                .name(e.getName())
-                .generation(e.getGeneration())
-                .status(e.getStatus())
-                .startDate(e.getStartDate())
-                .endDate(e.getEndDate())
-                .version(e.getVersion())
-                .createdAt(e.getCreatedAt())
-                .updatedAt(e.getUpdatedAt())
-                .build();
+        return new AcademicYearResponse(
+                e.getAcademicYearId(),
+                e.getName(),
+                e.getGeneration(),
+                e.getStatus(),
+                e.getStartDate(),
+                e.getEndDate(),
+                e.getVersion(),
+                e.getCreatedAt(),
+                e.getUpdatedAt());
     }
 }

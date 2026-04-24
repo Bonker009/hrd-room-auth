@@ -36,7 +36,7 @@ public class CourseServiceImpl implements CourseService {
         long version = course.getVersion() == null ? 0L : course.getVersion();
         int updated =
                 courseMapper.updateNameDescription(
-                        courseId, request.getName(), request.getDescription(), version, actorId);
+                        courseId, request.name(), request.description(), version, actorId);
         if (updated == 0) {
             throw ApiException.conflict("Course was modified concurrently");
         }
@@ -63,18 +63,17 @@ public class CourseServiceImpl implements CourseService {
     }
 
     private CourseResponse toResponse(CourseEntity c) {
-        return CourseResponse.builder()
-                .courseId(c.getCourseId())
-                .code(c.getCode())
-                .name(c.getName())
-                .type(c.getType())
-                .academicYearId(c.getAcademicYearId())
-                .prerequisiteCourseId(c.getPrerequisiteCourseId())
-                .description(c.getDescription())
-                .isArchived(c.getIsArchived())
-                .version(c.getVersion())
-                .createdAt(c.getCreatedAt())
-                .updatedAt(c.getUpdatedAt())
-                .build();
+        return new CourseResponse(
+                c.getCourseId(),
+                c.getCode(),
+                c.getName(),
+                c.getType(),
+                c.getAcademicYearId(),
+                c.getPrerequisiteCourseId(),
+                c.getDescription(),
+                c.getIsArchived(),
+                c.getVersion(),
+                c.getCreatedAt(),
+                c.getUpdatedAt());
     }
 }

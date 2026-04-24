@@ -110,7 +110,7 @@ public class EnrollmentController {
             UUID self =
                     SecurityUtils.currentUserId()
                             .orElseThrow(() -> new AccessDeniedException("Missing subject"));
-            if (!self.equals(row.getStudentId())) {
+            if (!self.equals(row.studentId())) {
                 return ResponseUtil.forbidden("Students may only load their own enrollment");
             }
         }

@@ -51,17 +51,17 @@ public class ClassroomServiceImpl implements ClassroomService {
         }
         ClassroomEntity row = new ClassroomEntity();
         row.setClassroomId(UUID.randomUUID());
-        row.setClassName(request.getClassName().trim());
-        row.setClassroomAbbre(request.getClassroomAbbre().trim());
-        row.setDescription(request.getDescription());
-        row.setImage(request.getImage());
+        row.setClassName(request.className().trim());
+        row.setClassroomAbbre(request.classroomAbbre().trim());
+        row.setDescription(request.description());
+        row.setImage(request.image());
         row.setAcademicYearId(active.getAcademicYearId());
         row.setCreatedBy(actorId);
         row.setUpdatedBy(actorId);
         row.setCreatedAt(LocalDateTime.now());
         classroomMapper.insert(row);
-        if (request.getSubjectId() != null) {
-            relationMapper.insertSubject(row.getClassroomId(), request.getSubjectId());
+        if (request.subjectId() != null) {
+            relationMapper.insertSubject(row.getClassroomId(), request.subjectId());
         }
         return toBasic(classroomMapper.findById(row.getClassroomId()));
     }
@@ -73,11 +73,11 @@ public class ClassroomServiceImpl implements ClassroomService {
         if (existing == null) {
             throw ApiException.notFound("Classroom not found");
         }
-        existing.setClassName(request.getClassName().trim());
-        existing.setClassroomAbbre(request.getClassroomAbbre().trim());
-        existing.setDescription(request.getDescription());
-        if (StringUtils.hasText(request.getImage())) {
-            existing.setImage(request.getImage());
+        existing.setClassName(request.className().trim());
+        existing.setClassroomAbbre(request.classroomAbbre().trim());
+        existing.setDescription(request.description());
+        if (StringUtils.hasText(request.image())) {
+            existing.setImage(request.image());
         }
         existing.setUpdatedBy(actorId);
         classroomMapper.update(existing);
@@ -106,7 +106,7 @@ public class ClassroomServiceImpl implements ClassroomService {
             throw ApiException.notFound("Classroom not found");
         }
         validateImage(file);
-        String url = fileStorageService.uploadFile(file, "classrooms");
+        String url = fileStorageService.uploadFile(file, "classrooms").url();
         classroomMapper.updateImage(classroomId, url, actorId);
         return url;
     }
@@ -150,11 +150,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     private AssessmentSummaryResponse toAssessmentSummary(AssessmentEntity a) {
-        return AssessmentSummaryResponse.builder()
-                .assessmentId(a.getAssessmentId())
-                .name(a.getName())
-                .assessmentDate(a.getAssessmentDate())
-                .build();
+        return new AssessmentSummaryResponse(a.getAssessmentId(), a.getName(), a.getAssessmentDate());
     }
 
     @Override
@@ -181,7 +177,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void assignAssessments(UUID classroomId, AssessmentIdsRequest request) {
         ensureClassroom(classroomId);
-        for (UUID id : request.getAssessmentIds()) {
+        for (UUID id : request.assessmentIds()) {
             relationMapper.insertAssessment(classroomId, id);
         }
     }
@@ -190,10 +186,10 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void removeAssessments(UUID classroomId, AssessmentIdsRequest request) {
         ensureClassroom(classroomId);
-        if (request.getAssessmentIds() == null || request.getAssessmentIds().isEmpty()) {
+        if (request.assessmentIds() == null || request.assessmentIds().isEmpty()) {
             throw ApiException.badRequest("assessmentIds must not be empty");
         }
-        relationMapper.deleteAssessments(classroomId, request.getAssessmentIds());
+        relationMapper.deleteAssessments(classroomId, request.assessmentIds());
     }
 
     @Override
@@ -206,7 +202,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void assignTeachers(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
-        for (UUID id : request.getIds()) {
+        for (UUID id : request.ids()) {
             relationMapper.insertTeacher(classroomId, id);
         }
     }
@@ -215,7 +211,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void removeTeachers(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
-        for (UUID id : request.getIds()) {
+        for (UUID id : request.ids()) {
             relationMapper.deleteTeacher(classroomId, id);
         }
     }
@@ -276,7 +272,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void assignStudents(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
-        for (UUID id : request.getIds()) {
+        for (UUID id : request.ids()) {
             relationMapper.insertStudent(classroomId, id);
         }
     }
@@ -285,7 +281,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Transactional
     public void removeStudents(UUID classroomId, UuidListRequest request) {
         ensureClassroom(classroomId);
-        for (UUID id : request.getIds()) {
+        for (UUID id : request.ids()) {
             relationMapper.deleteStudent(classroomId, id);
         }
     }
@@ -366,24 +362,22 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     private ClassroomResponse toBasic(ClassroomEntity e) {
-        return ClassroomResponse.builder()
-                .classroomId(e.getClassroomId())
-                .className(e.getClassName())
-                .classroomAbbre(e.getClassroomAbbre())
-                .description(e.getDescription())
-                .image(e.getImage())
-                .academicYearId(e.getAcademicYearId())
-                .createdAt(e.getCreatedAt())
-                .updatedAt(e.getUpdatedAt())
-                .build();
+        return toWithRelations(e, null, null, null);
     }
 
     private ClassroomResponse toWithRelations(
             ClassroomEntity e, List<UUID> teacherIds, List<UUID> studentIds, List<UUID> subjectIds) {
-        ClassroomResponse base = toBasic(e);
-        base.setTeacherIds(teacherIds);
-        base.setStudentIds(studentIds);
-        base.setSubjectIds(subjectIds);
-        return base;
+        return new ClassroomResponse(
+                e.getClassroomId(),
+                e.getClassName(),
+                e.getClassroomAbbre(),
+                e.getDescription(),
+                e.getImage(),
+                e.getAcademicYearId(),
+                e.getCreatedAt(),
+                e.getUpdatedAt(),
+                teacherIds,
+                studentIds,
+                subjectIds);
     }
 }

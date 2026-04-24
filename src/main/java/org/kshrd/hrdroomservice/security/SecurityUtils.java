@@ -1,5 +1,6 @@
 package org.kshrd.hrdroomservice.security;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -34,7 +35,7 @@ public final class SecurityUtils {
         }
         String target = "ROLE_" + role.toLowerCase();
         return authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
+                .map(GrantedAuthority::getAuthority).filter(Objects::nonNull)
                 .anyMatch(a -> a.equalsIgnoreCase(target));
     }
 

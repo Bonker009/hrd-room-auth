@@ -10,7 +10,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class DisabledFileStorageService implements FileStorageService {
 
     @Override
-    public String uploadFile(MultipartFile file, String folderPrefix) {
+    public FileUploadResult uploadFile(MultipartFile file, String folderPrefix) {
+        throw ApiException.badRequest("Object storage (RustFS) is disabled. Enable rustfs.enabled and configure credentials.");
+    }
+
+    @Override
+    public String previewFile(String key) {
         throw ApiException.badRequest("Object storage (RustFS) is disabled. Enable rustfs.enabled and configure credentials.");
     }
 }

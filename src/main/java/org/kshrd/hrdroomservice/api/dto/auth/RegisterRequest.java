@@ -2,23 +2,11 @@ package org.kshrd.hrdroomservice.api.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
+import org.kshrd.hrdroomservice.api.validation.StrongPassword;
 
-@Data
-public class RegisterRequest {
-
-    @NotBlank private String username;
-
-    @NotBlank
-    @Email
-    private String email;
-
-    @NotBlank
-    @Size(min = 8, max = 128)
-    private String password;
-
-    private String firstName;
-
-    private String lastName;
-}
+public record RegisterRequest(
+        @NotBlank String username,
+        @NotBlank @Email String email,
+        @NotBlank @StrongPassword String password,
+        String firstName,
+        String lastName) {}

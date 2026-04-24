@@ -1,11 +1,9 @@
 package org.kshrd.hrdroomservice.service.auth;
 
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Form;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,12 +12,12 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.kshrd.hrdroomservice.api.dto.auth.AuthTokenResponse;
 import org.kshrd.hrdroomservice.api.dto.auth.LoginRequest;
 import org.kshrd.hrdroomservice.api.dto.auth.LogoutRequest;
+import org.kshrd.hrdroomservice.api.dto.auth.RefreshTokenRequest;
 import org.kshrd.hrdroomservice.api.dto.auth.RegisterRequest;
 import org.kshrd.hrdroomservice.api.dto.auth.RegisteredUserResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
@@ -28,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.ResourceAccessException;
 
 @Service
 @RequiredArgsConstructor
@@ -43,65 +42,74 @@ public class KeycloakAuthService implements AuthService {
     private static final Pattern KEYCLOAK_OAUTH_ERROR_DESCRIPTION =
             Pattern.compile("\"error_description\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
     private final KeycloakAuthProperties properties;
+    private final ObjectMapper objectMapper;
+
+    private KeycloakOAuthHttpClient oauthHttp;
+
+    @PostConstruct
+    void initOAuthHttp() {
+        oauthHttp =
+                new KeycloakOAuthHttpClient(
+                        properties, objectMapper, KeycloakAuthService::mapKeycloakTokenFailure);
+    }
 
     @Override
     public AuthTokenResponse login(LoginRequest request) {
-        try (Keycloak keycloak =
-                     KeycloakBuilder.builder()
-                             .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
-                             .realm(properties.getRealm())
-                             .grantType(OAuth2Constants.PASSWORD)
-                             .username(request.getUsername())
-                             .password(request.getPassword())
-                             .clientId(properties.getClientId())
-                             .clientSecret(properties.getClientSecret())
-                             .build()) {
-            AccessTokenResponse token = keycloak.tokenManager().getAccessToken();
-            return AuthTokenResponse.builder()
-                    .accessToken(token.getToken())
-                    .refreshToken(token.getRefreshToken())
-                    .expiresIn(token.getExpiresIn())
-                    .refreshExpiresIn(token.getRefreshExpiresIn())
-                    .tokenType(token.getTokenType())
-                    .scope(token.getScope())
-                    .build();
-        } catch (WebApplicationException ex) {
-            Response response = ex.getResponse();
-            int status = response == null ? 0 : response.getStatus();
-            String body = readResponseBody(response);
+        try {
+            return oauthHttp.passwordGrant(request.username(), request.password());
+        } catch (ApiException ex) {
             log.warn(
-                    "Keycloak login failed: status={} realm={} clientId={} username={} body={}",
-                    status,
+                    "Keycloak login failed: realm={} clientId={} username={} status={} code={}",
                     properties.getRealm(),
                     properties.getClientId(),
-                    request.getUsername(),
-                    body);
-            throw mapKeycloakLoginFailure(status, body);
+                    request.username(),
+                    ex.getStatus().value(),
+                    ex.getErrorCode());
+            throw ex;
+        } catch (ResourceAccessException ex) {
+            log.warn("Keycloak login transport failed: realm={}", properties.getRealm(), ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Unable to reach identity provider", "UPSTREAM_ERROR");
         } catch (Exception ex) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid username or password", "AUTH_FAILED");
+            log.warn("Keycloak login unexpected failure: realm={}", properties.getRealm(), ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Authentication failed with identity provider", "UPSTREAM_ERROR");
+        }
+    }
+
+    @Override
+    public AuthTokenResponse refresh(RefreshTokenRequest request) {
+        try {
+            return oauthHttp.refreshGrant(request.refreshToken());
+        } catch (ApiException ex) {
+            log.warn(
+                    "Keycloak token refresh failed: realm={} clientId={} status={} code={}",
+                    properties.getRealm(),
+                    properties.getClientId(),
+                    ex.getStatus().value(),
+                    ex.getErrorCode());
+            throw ex;
+        } catch (ResourceAccessException ex) {
+            log.warn("Keycloak refresh transport failed: realm={}", properties.getRealm(), ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Unable to reach identity provider", "UPSTREAM_ERROR");
+        } catch (Exception ex) {
+            log.warn("Keycloak refresh unexpected failure: realm={}", properties.getRealm(), ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Token refresh failed with identity provider", "UPSTREAM_ERROR");
         }
     }
 
     @Override
     public void logout(LogoutRequest request) {
-        Form form = new Form();
-        form.param("client_id", properties.getClientId());
-        if (properties.getClientSecret() != null && !properties.getClientSecret().isBlank()) {
-            form.param("client_secret", properties.getClientSecret());
-        }
-        form.param("refresh_token", request.getRefreshToken());
-
-        try (Client client = ClientBuilder.newClient()) {
-            try (Response response =
-                         client.target(logoutUrl())
-                                 .request(MediaType.APPLICATION_JSON_TYPE)
-                                 .post(Entity.form(form))) {
-                int status = response.getStatus();
-                if (status >= 200 && status < 300) {
-                    return;
-                }
-                throw new ApiException(HttpStatus.UNAUTHORIZED, "Logout failed", "AUTH_FAILED");
-            }
+        try {
+            oauthHttp.logout(request.refreshToken());
+        } catch (ApiException ex) {
+            throw ex;
+        } catch (ResourceAccessException ex) {
+            log.warn("Keycloak logout transport failed: realm={}", properties.getRealm(), ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Unable to reach identity provider", "UPSTREAM_ERROR");
         }
     }
 
@@ -118,15 +126,16 @@ public class KeycloakAuthService implements AuthService {
 
             UserRepresentation user = new UserRepresentation();
             user.setEnabled(true);
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setFirstName(request.getFirstName());
-            user.setLastName(request.getLastName());
+            user.setEmailVerified(true);
+            user.setUsername(request.username());
+            user.setEmail(request.email());
+            user.setFirstName(request.firstName());
+            user.setLastName(request.lastName());
 
             CredentialRepresentation cred = new CredentialRepresentation();
             cred.setType(CredentialRepresentation.PASSWORD);
             cred.setTemporary(false);
-            cred.setValue(request.getPassword());
+            cred.setValue(request.password());
             user.setCredentials(java.util.List.of(cred));
 
             try (Response response = admin.realm(properties.getRealm()).users().create(user)) {
@@ -141,34 +150,71 @@ public class KeycloakAuthService implements AuthService {
                             status,
                             properties.getRealm(),
                             properties.getClientId(),
-                            request.getEmail(),
+                            request.email(),
                             body);
                     throw mapKeycloakCreateUserFailure(status, body);
                 }
                 String id = CreatedResponseUtil.getCreatedId(response);
-                return RegisteredUserResponse.builder()
-                        .userId(id)
-                        .username(request.getUsername())
-                        .email(request.getEmail())
-                        .firstName(request.getFirstName())
-                        .lastName(request.getLastName())
-                        .build();
+                return new RegisteredUserResponse(
+                        id,
+                        request.username(),
+                        request.email(),
+                        request.firstName(),
+                        request.lastName());
             }
         } catch (ApiException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (ProcessingException ex) {
+            log.warn(
+                    "Keycloak register transport failed (cannot reach server): authServerUrl={} realm={}",
+                    properties.getAuthServerUrl(),
+                    properties.getRealm(),
+                    ex);
             throw new ApiException(
                     HttpStatus.BAD_GATEWAY,
-                    "Registration failed with identity provider",
+                    "Unable to reach identity provider. Check keycloak.auth.auth-server-url and that Keycloak is running.",
+                    "UPSTREAM_ERROR");
+        } catch (WebApplicationException ex) {
+            Response r = ex.getResponse();
+            int status = r != null ? r.getStatus() : 0;
+            String body = r != null ? readResponseBody(r) : null;
+            log.warn(
+                    "Keycloak register HTTP error: status={} realm={} clientId={} email={} body={}",
+                    status,
+                    properties.getRealm(),
+                    properties.getClientId(),
+                    request.email(),
+                    body,
+                    ex);
+            if (status >= 400 && body != null) {
+                throw mapKeycloakCreateUserFailure(status, body);
+            }
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Registration failed with identity provider (HTTP " + status + ").",
+                    "UPSTREAM_ERROR");
+        } catch (IllegalStateException ex) {
+            log.warn(
+                    "Keycloak register: missing created user id (unexpected 201 response). realm={} email={}",
+                    properties.getRealm(),
+                    request.email(),
+                    ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Registration succeeded but identity provider returned an unexpected response.",
+                    "UPSTREAM_ERROR");
+        } catch (Exception ex) {
+            log.error(
+                    "Keycloak register unexpected failure: realm={} clientId={} email={}",
+                    properties.getRealm(),
+                    properties.getClientId(),
+                    request.email(),
+                    ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Registration failed with identity provider. See application logs for the underlying error.",
                     "UPSTREAM_ERROR");
         }
-    }
-
-    private String logoutUrl() {
-        return trimTrailingSlash(properties.getAuthServerUrl())
-                + "/realms/"
-                + properties.getRealm()
-                + "/protocol/openid-connect/logout";
     }
 
     private static String trimTrailingSlash(String url) {
@@ -211,7 +257,8 @@ public class KeycloakAuthService implements AuthService {
         return m.group(1).replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
-    private static ApiException mapKeycloakLoginFailure(int status, String body) {
+    /** Maps Keycloak token-endpoint JSON errors (password grant, refresh grant). */
+    private static ApiException mapKeycloakTokenFailure(int status, String body) {
         String error = extractJsonValue(body, KEYCLOAK_OAUTH_ERROR);
         String description = extractJsonValue(body, KEYCLOAK_OAUTH_ERROR_DESCRIPTION);
         if ("invalid_grant".equals(error)) {
@@ -221,6 +268,17 @@ public class KeycloakAuthService implements AuthService {
                         "Invalid username or password",
                         "AUTH_FAILED",
                         "username",
+                        "Authentication failed");
+            }
+            if (description != null
+                    && (description.toLowerCase().contains("invalid refresh token")
+                            || description.toLowerCase().contains("token is not active")
+                            || description.toLowerCase().contains("session not active"))) {
+                return new ApiException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Refresh token is invalid or expired",
+                        "AUTH_REFRESH_INVALID",
+                        null,
                         "Authentication failed");
             }
             if (description != null && description.toLowerCase().contains("account is not fully set up")) {
@@ -235,7 +293,7 @@ public class KeycloakAuthService implements AuthService {
         if ("unauthorized_client".equals(error)) {
             return new ApiException(
                     HttpStatus.BAD_GATEWAY,
-                    "This Keycloak client is not allowed to use password login. Enable Direct Access Grants for the client.",
+                    "This Keycloak client is not allowed to use this grant type. Check client configuration.",
                     "KEYCLOAK_CLIENT_POLICY",
                     null,
                     "Identity provider configuration error");
@@ -243,7 +301,7 @@ public class KeycloakAuthService implements AuthService {
         if ("invalid_client".equals(error)) {
             return new ApiException(
                     HttpStatus.BAD_GATEWAY,
-                    "Keycloak rejected the client credentials for login. Check keycloak.auth client-id and client-secret.",
+                    "Keycloak rejected the client credentials. Check keycloak.auth client-id and client-secret.",
                     "KEYCLOAK_CLIENT_AUTH",
                     null,
                     "Identity provider configuration error");
@@ -261,7 +319,7 @@ public class KeycloakAuthService implements AuthService {
         }
         return new ApiException(
                 HttpStatus.BAD_GATEWAY,
-                "Login failed with identity provider (HTTP " + status + ").",
+                "Token request failed with identity provider (HTTP " + status + ").",
                 "UPSTREAM_ERROR",
                 null,
                 "Authentication failed");

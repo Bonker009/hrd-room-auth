@@ -34,13 +34,9 @@ public interface AcademicYearMapper {
 
     @Select(
             """
-            <script>
             SELECT * FROM academic_years
-            <where>
-              <if test="!includeArchived">status = 'ACTIVE'</if>
-            </where>
+            WHERE (#{includeArchived} = TRUE OR status = 'ACTIVE')
             ORDER BY start_date DESC
-            </script>
             """)
     List<AcademicYearEntity> findAll(@Param("includeArchived") boolean includeArchived);
 

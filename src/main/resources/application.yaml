@@ -52,10 +52,13 @@ keycloak:
     realm: ${KEYCLOAK_REALM:assessment}
     client-id: ${KEYCLOAK_CLIENT_ID:hrd-room-service}
     client-secret: ${KEYCLOAK_CLIENT_SECRET:change-me}
+    http-connect-timeout: ${KEYCLOAK_HTTP_CONNECT_TIMEOUT:5s}
+    http-read-timeout: ${KEYCLOAK_HTTP_READ_TIMEOUT:30s}
 
 rustfs:
   enabled: ${RUSTFS_ENABLED:false}
   endpoint-url: ${RUSTFS_ENDPOINT_URL:}
+  public-endpoint-url: ${RUSTFS_PUBLIC_ENDPOINT_URL:${RUSTFS_ENDPOINT_URL:}}
   bucket-name: ${RUSTFS_BUCKET_NAME:}
   access-key-id: ${RUSTFS_ACCESS_KEY_ID:}
   secret-access-key: ${RUSTFS_SECRET_ACCESS_KEY:}

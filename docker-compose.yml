@@ -3,8 +3,12 @@ services:
     image: ${RUSTFS_IMAGE:-rustfs/rustfs:latest}
     container_name: hrd-room-service-rustfs
     environment:
-      RUSTFS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY_ID:-minioadmin}
-      RUSTFS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-minioadmin}
+      # RustFS expects RUSTFS_ACCESS_KEY / RUSTFS_SECRET_KEY (see https://docs.rustfs.com/installation/docker).
+      # Map from the same vars the Spring app uses (RUSTFS_ACCESS_KEY_ID / RUSTFS_SECRET_ACCESS_KEY).
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY_ID:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-rustfsadmin}
+      # Single-disk layout; must match the volume mount below.
+      RUSTFS_VOLUMES: /data
       RUSTFS_DEFAULT_BUCKETS: ${RUSTFS_BUCKET_NAME:-hrd-room-service}
     ports:
       - "${RUSTFS_API_PORT:-9000}:9000"
@@ -38,20 +42,12 @@ services:
       args:
         SKIP_TESTS: "true"
     container_name: hrd-room-service-app
+    env_file:
+      - .env
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      APP_SECURITY_ENABLED: ${APP_SECURITY_ENABLED:-false}
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-hrd_room_service}
-      DB_USERNAME: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      RUSTFS_ENABLED: ${RUSTFS_ENABLED:-false}
-      RUSTFS_ENDPOINT_URL: ${RUSTFS_ENDPOINT_URL:-http://rustfs:9000}
-      RUSTFS_BUCKET_NAME: ${RUSTFS_BUCKET_NAME:-hrd-room-service}
-      RUSTFS_ACCESS_KEY_ID: ${RUSTFS_ACCESS_KEY_ID:-minioadmin}
-      RUSTFS_SECRET_ACCESS_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-minioadmin}
-      RUSTFS_REGION: ${RUSTFS_REGION:-us-east-1}
     depends_on:
       db:
         condition: service_healthy

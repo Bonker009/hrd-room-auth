@@ -134,13 +134,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         List<EnrollmentResponse> basic = new ArrayList<>();
         List<EnrollmentResponse> advanced = new ArrayList<>();
         for (EnrollmentResponse r : rows) {
-            if (CourseType.BASIC.name().equals(r.getCourseType())) {
+            if (CourseType.BASIC.name().equals(r.courseType())) {
                 basic.add(r);
-            } else if (CourseType.ADVANCED.name().equals(r.getCourseType())) {
+            } else if (CourseType.ADVANCED.name().equals(r.courseType())) {
                 advanced.add(r);
             }
         }
-        return EnrollmentByCourseTypeResponse.builder().basic(basic).advanced(advanced).build();
+        return new EnrollmentByCourseTypeResponse(basic, advanced);
     }
 
     @Override
@@ -169,7 +169,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         long version = row.getVersion() == null ? 0L : row.getVersion();
         int updated =
                 enrollmentMapper.terminate(
-                        enrollmentId, request == null ? null : request.getReason(), version, actorId);
+                        enrollmentId, request == null ? null : request.reason(), version, actorId);
         if (updated == 0) {
             throw ApiException.conflict("Enrollment was modified concurrently");
         }
@@ -222,21 +222,21 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private EnrollmentResponse toResponse(EnrollmentEntity e) {
         CourseEntity course = courseMapper.findById(e.getCourseId());
         AcademicYearEntity year =
-                course == null ? null : academicYearMapper.findById(course.getAcademicYearId());
-        return EnrollmentResponse.builder()
-                .enrollmentId(e.getEnrollmentId())
-                .studentId(e.getStudentId())
-                .courseId(e.getCourseId())
-                .courseName(course == null ? null : course.getName())
-                .courseType(course == null ? null : course.getType())
-                .academicYearId(e.getAcademicYearId())
-                .academicYearName(year == null ? null : year.getName())
-                .enrolledAt(e.getEnrolledAt())
-                .isPassed(e.getIsPassed())
-                .isTerminated(e.getIsTerminated())
-                .terminatedAt(e.getTerminatedAt())
-                .terminationReason(e.getTerminationReason())
-                .version(e.getVersion())
-                .build();
+                e.getAcademicYearId() == null ? null : academicYearMapper.findById(e.getAcademicYearId());
+        return new EnrollmentResponse(
+                e.getEnrollmentId(),
+                e.getStudentId(),
+                e.getCourseId(),
+                course == null ? null : course.getName(),
+                course == null ? null : course.getType(),
+                e.getAcademicYearId(),
+                year == null ? null : year.getName(),
+                year == null ? null : year.getGeneration(),
+                e.getEnrolledAt(),
+                e.getIsPassed(),
+                e.getIsTerminated(),
+                e.getTerminatedAt(),
+                e.getTerminationReason(),
+                e.getVersion());
     }
 }
