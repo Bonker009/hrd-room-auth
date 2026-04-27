@@ -11,11 +11,14 @@ import org.kshrd.hrdroomservice.api.dto.response.ApiResponse;
 import org.kshrd.hrdroomservice.api.dto.response.ResponseUtil;
 import org.kshrd.hrdroomservice.service.account.ActiveAcademicContext;
 import org.kshrd.hrdroomservice.service.account.ActiveAcademicContextService;
+import org.kshrd.hrdroomservice.service.auth.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final ActiveAcademicContextService activeAcademicContextService;
+    private final AuthService authService;
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
@@ -47,6 +51,13 @@ public class AccountController {
                         ctx.map(ActiveAcademicContext::academicYearName).orElse(null),
                         ctx.map(ActiveAcademicContext::generation).orElse(null));
         return ResponseUtil.ok(body, "Current user profile");
+    }
+
+    @PutMapping("/{userId}/role/teacher")
+    @PreAuthorize("hasRole('admin')")
+    public ResponseEntity<ApiResponse<Void>> changeStudentToTeacher(@PathVariable UUID userId) {
+        authService.changeStudentToTeacher(userId);
+        return ResponseUtil.ok(null, "Role changed from student to teacher");
     }
 
     private static UUID parseStudentId(String subject) {

@@ -3,11 +3,8 @@ services:
     image: ${RUSTFS_IMAGE:-rustfs/rustfs:latest}
     container_name: hrd-room-service-rustfs
     environment:
-      # RustFS expects RUSTFS_ACCESS_KEY / RUSTFS_SECRET_KEY (see https://docs.rustfs.com/installation/docker).
-      # Map from the same vars the Spring app uses (RUSTFS_ACCESS_KEY_ID / RUSTFS_SECRET_ACCESS_KEY).
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY_ID:-rustfsadmin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_ACCESS_KEY:-rustfsadmin}
-      # Single-disk layout; must match the volume mount below.
       RUSTFS_VOLUMES: /data
       RUSTFS_DEFAULT_BUCKETS: ${RUSTFS_BUCKET_NAME:-hrd-room-service}
     ports:

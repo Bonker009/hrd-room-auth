@@ -1,5 +1,6 @@
 package org.kshrd.hrdroomservice.service.auth;
 
+import java.util.UUID;
 import org.kshrd.hrdroomservice.api.dto.auth.AuthTokenResponse;
 import org.kshrd.hrdroomservice.api.dto.auth.LoginRequest;
 import org.kshrd.hrdroomservice.api.dto.auth.LogoutRequest;
@@ -16,4 +17,6 @@ public interface AuthService {
     void logout(LogoutRequest request);
 
     RegisteredUserResponse register(RegisterRequest request);
+
+    void changeStudentToTeacher(UUID userId);
 }

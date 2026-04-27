@@ -1,18 +1,17 @@
 package org.kshrd.hrdroomservice.service.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
-import jakarta.ws.rs.ProcessingException;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
+import java.util.List;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import lombok.RequiredArgsConstructor;
+
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.kshrd.hrdroomservice.api.dto.auth.AuthTokenResponse;
 import org.kshrd.hrdroomservice.api.dto.auth.LoginRequest;
@@ -28,19 +27,27 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 public class KeycloakAuthService implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakAuthService.class);
-    private static final Pattern KEYCLOAK_ERROR_MESSAGE =
-            Pattern.compile("\"errorMessage\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_FIELD =
-            Pattern.compile("\"field\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_OAUTH_ERROR =
-            Pattern.compile("\"error\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_OAUTH_ERROR_DESCRIPTION =
-            Pattern.compile("\"error_description\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_ERROR_MESSAGE = Pattern
+            .compile("\"errorMessage\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_FIELD = Pattern
+            .compile("\"field\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_OAUTH_ERROR = Pattern
+            .compile("\"error\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_OAUTH_ERROR_DESCRIPTION = Pattern
+            .compile("\"error_description\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
     private final KeycloakAuthProperties properties;
     private final ObjectMapper objectMapper;
 
@@ -48,9 +55,8 @@ public class KeycloakAuthService implements AuthService {
 
     @PostConstruct
     void initOAuthHttp() {
-        oauthHttp =
-                new KeycloakOAuthHttpClient(
-                        properties, objectMapper, KeycloakAuthService::mapKeycloakTokenFailure);
+        oauthHttp = new KeycloakOAuthHttpClient(
+                properties, objectMapper, KeycloakAuthService::mapKeycloakTokenFailure);
     }
 
     @Override
@@ -119,14 +125,13 @@ public class KeycloakAuthService implements AuthService {
 
     @Override
     public RegisteredUserResponse register(RegisterRequest request) {
-        try (Keycloak admin =
-                KeycloakBuilder.builder()
-                        .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
-                        .realm(properties.getRealm())
-                        .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
-                        .clientId(properties.getClientId())
-                        .clientSecret(properties.getClientSecret())
-                        .build()) {
+        try (Keycloak admin = KeycloakBuilder.builder()
+                .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
+                .realm(properties.getRealm())
+                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                .clientId(properties.getClientId())
+                .clientSecret(properties.getClientSecret())
+                .build()) {
 
             UserRepresentation user = new UserRepresentation();
             user.setEnabled(true);
@@ -219,6 +224,70 @@ public class KeycloakAuthService implements AuthService {
                     "Registration failed with identity provider. See application logs for the underlying error.",
                     "UPSTREAM_ERROR");
         }
+    }
+
+    @Override
+    public void changeStudentToTeacher(UUID userId) {
+        try (Keycloak admin = buildAdminClient()) {
+            var realm = admin.realm(properties.getRealm());
+            UserResource user = realm.users().get(userId.toString());
+            UserRepresentation targetUser = user.toRepresentation();
+            if (targetUser == null) {
+                throw ApiException.notFound("Student not found");
+            }
+
+            RoleRepresentation studentRole = realm.roles().get("student").toRepresentation();
+            RoleRepresentation teacherRole = realm.roles().get("teacher").toRepresentation();
+
+            List<RoleRepresentation> assigned = user.roles().realmLevel().listAll();
+            boolean hasStudent = assigned.stream()
+                    .anyMatch(
+                            role -> role.getName() != null
+                                    && role.getName().equalsIgnoreCase("student"));
+            boolean hasTeacher = assigned.stream()
+                    .anyMatch(
+                            role -> role.getName() != null
+                                    && role.getName().equalsIgnoreCase("teacher"));
+
+            if (hasStudent) {
+                user.roles().realmLevel().remove(List.of(studentRole));
+            }
+            if (!hasTeacher) {
+                user.roles().realmLevel().add(List.of(teacherRole));
+            }
+        } catch (ApiException ex) {
+            throw ex;
+        } catch (WebApplicationException ex) {
+            throw mapRoleChangeWebException(ex, userId);
+        } catch (ProcessingException ex) {
+            log.warn(
+                    "Keycloak role-change transport failed: realm={} userId={}",
+                    properties.getRealm(),
+                    userId,
+                    ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY, "Unable to reach identity provider", "UPSTREAM_ERROR");
+        } catch (Exception ex) {
+            log.error(
+                    "Keycloak role-change unexpected failure: realm={} userId={}",
+                    properties.getRealm(),
+                    userId,
+                    ex);
+            throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Role update failed with identity provider",
+                    "UPSTREAM_ERROR");
+        }
+    }
+
+    Keycloak buildAdminClient() {
+        return KeycloakBuilder.builder()
+                .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
+                .realm(properties.getRealm())
+                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                .clientId(properties.getClientId())
+                .clientSecret(properties.getClientSecret())
+                .build();
     }
 
     private static String trimTrailingSlash(String url) {
@@ -350,10 +419,9 @@ public class KeycloakAuthService implements AuthService {
         }
         if (status == 400) {
             String field = extractKeycloakField(body);
-            String detail =
-                    keycloakMsg != null
-                            ? KeycloakErrorMessageMapper.toUserMessage(keycloakMsg)
-                            : "Registration was rejected by the identity provider.";
+            String detail = keycloakMsg != null
+                    ? KeycloakErrorMessageMapper.toUserMessage(keycloakMsg)
+                    : "Registration was rejected by the identity provider.";
             return ApiException.registrationRejected(detail, field);
         }
         if (keycloakMsg != null) {
@@ -382,5 +450,31 @@ public class KeycloakAuthService implements AuthService {
             return null;
         }
         return m.group(1).replace("\\\"", "\"").replace("\\\\", "\\");
+    }
+
+    private ApiException mapRoleChangeWebException(WebApplicationException ex, UUID userId) {
+        Response response = ex.getResponse();
+        int status = response != null ? response.getStatus() : 0;
+        String body = response != null ? readResponseBody(response) : null;
+        log.warn(
+                "Keycloak role-change HTTP error: status={} realm={} userId={} body={}",
+                status,
+                properties.getRealm(),
+                userId,
+                body,
+                ex);
+        if (status == 403) {
+            return new ApiException(
+                    HttpStatus.FORBIDDEN,
+                    "Keycloak denied role update for this client. Ensure realm-management roles include manage-users and manage-realm.",
+                    "KEYCLOAK_FORBIDDEN");
+        }
+        if (status == 404) {
+            return ApiException.notFound("User or role was not found in identity provider");
+        }
+        return new ApiException(
+                HttpStatus.BAD_GATEWAY,
+                "Role update failed with identity provider (HTTP " + status + ").",
+                "UPSTREAM_ERROR");
     }
 }
