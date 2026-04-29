@@ -1,6 +1,8 @@
 app:
   security:
     enabled: false
+  rate-limit:
+    enabled: false
 
 rustfs:
   enabled: false

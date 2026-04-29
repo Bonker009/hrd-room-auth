@@ -53,6 +53,10 @@ logging:
 app:
   security:
     enabled: ${APP_SECURITY_ENABLED:true}
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    capacity: ${APP_RATE_LIMIT_CAPACITY:200}
+    refill-seconds: ${APP_RATE_LIMIT_REFILL_SECONDS:60}
   jwt:
     role-claim: realm_access.roles
     principal-claim: ${JWT_PRINCIPAL_CLAIM:sub}

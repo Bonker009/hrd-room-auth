@@ -37,6 +37,9 @@ public class AuditLogEntity {
     @Column(name = "request_id", length = 64)
     private String requestId;
 
+    @Column(name = "request_path", length = 1024)
+    private String requestPath;
+
     @Column(name = "summary")
     private String summary;
 

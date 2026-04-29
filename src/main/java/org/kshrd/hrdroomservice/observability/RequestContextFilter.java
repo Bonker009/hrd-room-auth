@@ -21,7 +21,7 @@ public class RequestContextFilter extends OncePerRequestFilter {
         response.setHeader(REQUEST_ID_HEADER, requestId);
 
         MDC.put("requestId", requestId);
-        MDC.put("clientIp", resolveClientIp(request));
+        MDC.put("clientIp", ClientIpResolver.resolve(request));
         MDC.put("method", request.getMethod());
         MDC.put("path", request.getRequestURI());
         try {
@@ -37,17 +37,5 @@ public class RequestContextFilter extends OncePerRequestFilter {
             return UUID.randomUUID().toString();
         }
         return headerValue.trim();
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-        return request.getRemoteAddr();
     }
 }

@@ -27,6 +27,8 @@ public class AuditLogRecorder {
         row.setActorId(SecurityUtils.currentUserId().orElse(null));
         String requestId = MDC.get("requestId");
         row.setRequestId(requestId != null && !requestId.isBlank() ? requestId : null);
+        String path = MDC.get("path");
+        row.setRequestPath(path != null && !path.isBlank() ? path : null);
         row.setSummary(unproxied.getClass().getSimpleName() + " " + identifier);
         row.setDetailsJson(null);
         auditLogRepository.save(row);
