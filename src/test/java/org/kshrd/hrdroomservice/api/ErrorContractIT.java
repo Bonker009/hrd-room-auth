@@ -3,6 +3,7 @@ package org.kshrd.hrdroomservice.api;
 import static org.kshrd.hrdroomservice.support.Authz.admin;
 import static org.kshrd.hrdroomservice.support.Authz.student;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -94,6 +95,64 @@ class ErrorContractIT extends IntegrationTest {
                 .andExpect(jsonPath("$.statusCode").value(400))
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.details.violations[0].field").value("name"));
+    }
+
+    @Test
+    void malformed_json_returns_bad_request_shape() throws Exception {
+        String malformedDatePayload =
+                """
+                {
+                  "name": "Gen 2031",
+                  "generation": 2031,
+                  "startDate": "2025-07-09",
+                  "endDate": "2031-12-31T00:00:00"
+                }
+                """;
+
+        mockMvc.perform(
+                        post("/api/v4/academic-years")
+                                .with(admin(UUID.randomUUID()))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(malformedDatePayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.errorCode").value("MALFORMED_REQUEST"))
+                .andExpect(jsonPath("$.details.field").value("startDate"));
+    }
+
+    @Test
+    void path_type_mismatch_returns_bad_request_shape() throws Exception {
+        mockMvc.perform(
+                        get("/api/v4/academic-years/{id}", "not-a-uuid")
+                                .with(admin(UUID.randomUUID())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.errorCode").value("TYPE_MISMATCH"))
+                .andExpect(jsonPath("$.details.field").value("id"));
+    }
+
+    @Test
+    void method_not_allowed_returns_proper_shape() throws Exception {
+        mockMvc.perform(patch("/api/v4/academic-years").with(admin(UUID.randomUUID())))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.statusCode").value(405))
+                .andExpect(jsonPath("$.errorCode").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void unsupported_media_type_returns_proper_shape() throws Exception {
+        mockMvc.perform(
+                        post("/api/v4/academic-years")
+                                .with(admin(UUID.randomUUID()))
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .content("plain-text-body"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.statusCode").value(415))
+                .andExpect(jsonPath("$.errorCode").value("UNSUPPORTED_MEDIA_TYPE"));
     }
 
     private UUID createActiveYearAndReturnBasicCourseId(UUID adminId) throws Exception {
