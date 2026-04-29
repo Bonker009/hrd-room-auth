@@ -1,10 +1,15 @@
 package org.kshrd.hrdroomservice.service.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import lombok.RequiredArgsConstructor;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
@@ -21,42 +26,37 @@ import org.kshrd.hrdroomservice.api.dto.auth.RegisterRequest;
 import org.kshrd.hrdroomservice.api.dto.auth.RegisteredUserResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.config.security.KeycloakAuthProperties;
+import org.kshrd.hrdroomservice.security.email.DisposableEmailDomainBlocklist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.ws.rs.ProcessingException;
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
-
 @Service
 @RequiredArgsConstructor
 public class KeycloakAuthService implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakAuthService.class);
-    private static final Pattern KEYCLOAK_ERROR_MESSAGE = Pattern
-            .compile("\"errorMessage\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_FIELD = Pattern
-            .compile("\"field\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_OAUTH_ERROR = Pattern
-            .compile("\"error\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
-    private static final Pattern KEYCLOAK_OAUTH_ERROR_DESCRIPTION = Pattern
-            .compile("\"error_description\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_ERROR_MESSAGE =
+            Pattern.compile("\"errorMessage\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_FIELD =
+            Pattern.compile("\"field\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_OAUTH_ERROR =
+            Pattern.compile("\"error\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
+    private static final Pattern KEYCLOAK_OAUTH_ERROR_DESCRIPTION =
+            Pattern.compile("\"error_description\"\\s*:\\s*\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"");
     private final KeycloakAuthProperties properties;
     private final ObjectMapper objectMapper;
+    private final DisposableEmailDomainBlocklist disposableEmailDomainBlocklist;
 
     private KeycloakOAuthHttpClient oauthHttp;
 
     @PostConstruct
     void initOAuthHttp() {
-        oauthHttp = new KeycloakOAuthHttpClient(
-                properties, objectMapper, KeycloakAuthService::mapKeycloakTokenFailure);
+        oauthHttp =
+                new KeycloakOAuthHttpClient(
+                        properties, objectMapper, KeycloakAuthService::mapKeycloakTokenFailure);
     }
 
     @Override
@@ -125,13 +125,18 @@ public class KeycloakAuthService implements AuthService {
 
     @Override
     public RegisteredUserResponse register(RegisterRequest request) {
-        try (Keycloak admin = KeycloakBuilder.builder()
-                .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
-                .realm(properties.getRealm())
-                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
-                .clientId(properties.getClientId())
-                .clientSecret(properties.getClientSecret())
-                .build()) {
+        if (disposableEmailDomainBlocklist.isDisposable(request.email())) {
+            throw ApiException.registrationRejected(
+                    "Disposable email addresses are not allowed", "email");
+        }
+        try (Keycloak admin =
+                KeycloakBuilder.builder()
+                        .serverUrl(trimTrailingSlash(properties.getAuthServerUrl()))
+                        .realm(properties.getRealm())
+                        .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                        .clientId(properties.getClientId())
+                        .clientSecret(properties.getClientSecret())
+                        .build()) {
 
             UserRepresentation user = new UserRepresentation();
             user.setEnabled(true);
@@ -240,14 +245,18 @@ public class KeycloakAuthService implements AuthService {
             RoleRepresentation teacherRole = realm.roles().get("teacher").toRepresentation();
 
             List<RoleRepresentation> assigned = user.roles().realmLevel().listAll();
-            boolean hasStudent = assigned.stream()
-                    .anyMatch(
-                            role -> role.getName() != null
-                                    && role.getName().equalsIgnoreCase("student"));
-            boolean hasTeacher = assigned.stream()
-                    .anyMatch(
-                            role -> role.getName() != null
-                                    && role.getName().equalsIgnoreCase("teacher"));
+            boolean hasStudent =
+                    assigned.stream()
+                            .anyMatch(
+                                    role ->
+                                            role.getName() != null
+                                                    && role.getName().equalsIgnoreCase("student"));
+            boolean hasTeacher =
+                    assigned.stream()
+                            .anyMatch(
+                                    role ->
+                                            role.getName() != null
+                                                    && role.getName().equalsIgnoreCase("teacher"));
 
             if (hasStudent) {
                 user.roles().realmLevel().remove(List.of(studentRole));
@@ -419,9 +428,10 @@ public class KeycloakAuthService implements AuthService {
         }
         if (status == 400) {
             String field = extractKeycloakField(body);
-            String detail = keycloakMsg != null
-                    ? KeycloakErrorMessageMapper.toUserMessage(keycloakMsg)
-                    : "Registration was rejected by the identity provider.";
+            String detail =
+                    keycloakMsg != null
+                            ? KeycloakErrorMessageMapper.toUserMessage(keycloakMsg)
+                            : "Registration was rejected by the identity provider.";
             return ApiException.registrationRejected(detail, field);
         }
         if (keycloakMsg != null) {

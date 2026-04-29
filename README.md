@@ -68,13 +68,12 @@ Current mappings:
 - `AuthenticationException` -> `401 Unauthorized`
 - `AccessDeniedException` -> `403 Forbidden`
 
-Response bodies are `ProblemDetail`-based and are built in
-`src/main/java/org/kshrd/hrdroomservice/api/exception/ProblemDetailSupport.java`.
-Common custom properties include:
+All error responses are now returned using the same `ApiResponse` envelope used by success
+responses, so clients can parse one stable shape everywhere. Common fields include:
 
 - `errorCode` (for machine-readable handling)
-- `field` (when a specific input field caused the issue)
-- `violations` (validation errors list)
+- `details.field` (when a specific input field caused the issue)
+- `details.violations` (validation errors list)
 
 ### When to throw ApiException
 
@@ -103,12 +102,11 @@ Business not found (`ApiException.notFound`):
 
 ```json
 {
-  "type": "about:blank",
-  "title": "Resource not found",
-  "status": 404,
-  "detail": "Classroom not found",
-  "instance": "/api/v4/classrooms/...",
-  "errorCode": "NOT_FOUND"
+  "success": false,
+  "statusCode": 404,
+  "message": "Classroom not found",
+  "errorCode": "NOT_FOUND",
+  "path": "/api/v4/classrooms/..."
 }
 ```
 
@@ -116,16 +114,17 @@ Validation failure (`@Valid` + `MethodArgumentNotValidException`):
 
 ```json
 {
-  "type": "about:blank",
-  "title": "Validation failed",
-  "status": 400,
-  "detail": "email: must be a well-formed email address; password: must not be blank",
-  "instance": "/api/v4/auth/register",
+  "success": false,
+  "statusCode": 400,
+  "message": "email: must be a well-formed email address; password: must not be blank",
   "errorCode": "VALIDATION_ERROR",
-  "violations": [
-    { "field": "email", "message": "must be a well-formed email address" },
-    { "field": "password", "message": "must not be blank" }
-  ]
+  "path": "/api/v4/auth/register",
+  "details": {
+    "violations": [
+      { "field": "email", "message": "must be a well-formed email address" },
+      { "field": "password", "message": "must not be blank" }
+    ]
+  }
 }
 ```
 
@@ -133,23 +132,21 @@ Authentication / authorization:
 
 ```json
 {
-  "type": "about:blank",
-  "title": "Unauthorized",
-  "status": 401,
-  "detail": "Authentication is required for this resource.",
-  "instance": "/api/v4/...",
-  "errorCode": "UNAUTHORIZED"
+  "success": false,
+  "statusCode": 401,
+  "message": "Authentication is required for this resource.",
+  "errorCode": "UNAUTHORIZED",
+  "path": "/api/v4/..."
 }
 ```
 
 ```json
 {
-  "type": "about:blank",
-  "title": "Forbidden",
-  "status": 403,
-  "detail": "You do not have permission to perform this action.",
-  "instance": "/api/v4/...",
-  "errorCode": "ACCESS_DENIED"
+  "success": false,
+  "statusCode": 403,
+  "message": "You do not have permission to perform this action.",
+  "errorCode": "ACCESS_DENIED",
+  "path": "/api/v4/..."
 }
 ```
 
@@ -158,10 +155,28 @@ Authentication / authorization:
 If you need a new standardized error shape:
 
 1. Add a new `@ExceptionHandler(...)` method in `GlobalExceptionHandler`.
-2. Build the response with `ProblemDetailSupport.simple(...)` or add a new helper there.
+2. Build the response with `ApiResponse.error(...)`, and set `details` when extra context is useful.
 3. Reuse an existing `errorCode` or introduce a new one intentionally.
 
 Known gap: malformed JSON (`HttpMessageNotReadableException`) is not handled explicitly in
 `GlobalExceptionHandler` right now. Depending on security routing, it may be forwarded to `/error`.
-If your API contract expects a strict `400` ProblemDetail for malformed JSON, add a dedicated
+If your API contract expects a strict `400` JSON error envelope for malformed JSON, add a dedicated
 `@ExceptionHandler(HttpMessageNotReadableException.class)` and map it to `BAD_REQUEST`.
+
+## OpenAPI Contract Snapshot
+
+The API contract is snapshot-tested in:
+
+- `src/test/java/org/kshrd/hrdroomservice/api/OpenApiContractIT.java`
+- `src/test/resources/openapi/openapi.json`
+
+### Updating the snapshot
+
+When API changes are intentional:
+
+```bash
+./gradlew --no-daemon test --tests "org.kshrd.hrdroomservice.api.OpenApiContractIT" -Dopenapi.update=true
+```
+
+Then run the same test again without `-Dopenapi.update=true` to confirm it is stable, and commit the
+updated `src/test/resources/openapi/openapi.json`.

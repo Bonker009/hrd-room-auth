@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -25,8 +26,10 @@ import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.kshrd.hrdroomservice.api.dto.auth.RegisterRequest;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.config.security.KeycloakAuthProperties;
+import org.kshrd.hrdroomservice.security.email.DisposableEmailDomainBlocklist;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,12 +45,17 @@ class KeycloakAuthServiceTest {
     @Mock private RoleResource teacherRoleResource;
     @Mock private RoleMappingResource roleMappingResource;
     @Mock private RoleScopeResource roleScopeResource;
+    @Mock private DisposableEmailDomainBlocklist disposableEmailDomainBlocklist;
 
     @Test
     void changeStudentToTeacher_removesStudentAndAddsTeacher() {
         UUID userId = UUID.randomUUID();
         KeycloakAuthService service =
-                spy(new KeycloakAuthService(properties(), new ObjectMapper()));
+                spy(
+                        new KeycloakAuthService(
+                                properties(),
+                                new ObjectMapper(),
+                                mock(DisposableEmailDomainBlocklist.class)));
         doReturn(keycloak).when(service).buildAdminClient();
         mockCommonGraph(userId);
 
@@ -65,7 +73,11 @@ class KeycloakAuthServiceTest {
     void changeStudentToTeacher_isIdempotent_whenAlreadyTeacherOnly() {
         UUID userId = UUID.randomUUID();
         KeycloakAuthService service =
-                spy(new KeycloakAuthService(properties(), new ObjectMapper()));
+                spy(
+                        new KeycloakAuthService(
+                                properties(),
+                                new ObjectMapper(),
+                                mock(DisposableEmailDomainBlocklist.class)));
         doReturn(keycloak).when(service).buildAdminClient();
         mockCommonGraph(userId);
 
@@ -83,7 +95,11 @@ class KeycloakAuthServiceTest {
     void changeStudentToTeacher_returnsNotFound_whenStudentIdDoesNotExist() {
         UUID userId = UUID.randomUUID();
         KeycloakAuthService service =
-                spy(new KeycloakAuthService(properties(), new ObjectMapper()));
+                spy(
+                        new KeycloakAuthService(
+                                properties(),
+                                new ObjectMapper(),
+                                mock(DisposableEmailDomainBlocklist.class)));
         doReturn(keycloak).when(service).buildAdminClient();
 
         when(keycloak.realm("hrd")).thenReturn(realmResource);
@@ -94,6 +110,19 @@ class KeycloakAuthServiceTest {
                 assertThrows(ApiException.class, () -> service.changeStudentToTeacher(userId));
         assertEquals("NOT_FOUND", ex.getErrorCode());
         assertEquals("User or role was not found in identity provider", ex.getMessage());
+    }
+
+    @Test
+    void register_rejectsDisposableEmailBeforeCallingIdentityProvider() {
+        KeycloakAuthService service =
+                new KeycloakAuthService(
+                        properties(), new ObjectMapper(), disposableEmailDomainBlocklist);
+        RegisterRequest request =
+                new RegisterRequest("student01", "foo@mailinator.com", "Abcd1234@", "John", "Doe");
+        when(disposableEmailDomainBlocklist.isDisposable("foo@mailinator.com")).thenReturn(true);
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.register(request));
+        assertEquals("REGISTRATION_REJECTED", ex.getErrorCode());
     }
 
     private void mockCommonGraph(UUID userId) {

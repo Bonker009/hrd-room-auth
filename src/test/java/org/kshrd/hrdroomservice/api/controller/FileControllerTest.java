@@ -63,8 +63,9 @@ class FileControllerTest {
         mockMvc()
                 .perform(multipart("/api/v4/files/upload").file(file))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.detail").value("File is required"));
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("File is required"))
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"));
     }
 
     @Test
@@ -105,7 +106,8 @@ class FileControllerTest {
         mockMvc()
                 .perform(get("/api/v4/files/preview").param("key", " "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.detail").value("File key is required"));
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("File key is required"))
+                .andExpect(jsonPath("$.errorCode").value("BAD_REQUEST"));
     }
 }
