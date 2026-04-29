@@ -39,3 +39,6 @@ out/
 # Local environment secrets
 .env
 .env.local
+
+# Logback rolling file output (default: logs/hrd-room-service.log)
+logs/

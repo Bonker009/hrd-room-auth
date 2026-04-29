@@ -180,3 +180,21 @@ When API changes are intentional:
 
 Then run the same test again without `-Dopenapi.update=true` to confirm it is stable, and commit the
 updated `src/test/resources/openapi/openapi.json`.
+
+## Database audit trail (`audit_logs`)
+
+Domain rows that extend `AuditableEntity` (academic years, courses, enrollments, classrooms) emit rows into
+the `audit_logs` table on **CREATE**, **UPDATE**, and **DELETE** via a JPA entity listener. Each row stores
+`action`, `entity_type`, `entity_id`, optional `actor_id` (from the security context when present),
+optional `request_id` (from MDC when present), and a short `summary`.
+
+Bulk JPQL updates and entities that do not extend `AuditableEntity` (for example junction tables or the
+read-only enrollment detail view) are **not** recorded in `audit_logs`.
+
+## File logging
+
+Logs are written to **console** and to a **rolling file** (same line format as the pretty console, including MDC).
+
+- Default active log file: `logs/hrd-room-service.log` (relative to the process working directory).
+- Rotated archives: `logs/archived/hrd-room-service-<date>.<index>.log.gz` (see `logging.logback.rollingpolicy` in `application.yaml`).
+- Override path in Docker or production: set `LOG_FILE` (maps to `logging.file.name`) and optionally `LOG_FILE_ARCHIVE` for the archive pattern. Mount a volume on the directory that contains the log file if you need persistence across container restarts.
