@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="hrd-room-service"/>
-    <springProperty scope="context" name="LOG_FILE" source="logging.file.name" defaultValue="logs/hrd-room-service.log"/>
+    <springProperty scope="context" name="LOG_FILE" source="logging.file.name"
+                    defaultValue="${java.io.tmpdir}/hrd-room-service.log"/>
     <springProperty scope="context" name="ROLLING_FILE_NAME_PATTERN"
                     source="logging.logback.rollingpolicy.file-name-pattern"
-                    defaultValue="logs/archived/hrd-room-service-%d{yyyy-MM-dd}.%i.log.gz"/>
+                    defaultValue="${java.io.tmpdir}/hrd-room-service-logs/hrd-room-service-%d{yyyy-MM-dd}.%i.log.gz"/>
     <springProperty scope="context" name="ROLLING_MAX_FILE_SIZE"
                     source="logging.logback.rollingpolicy.max-file-size" defaultValue="10MB"/>
     <springProperty scope="context" name="ROLLING_MAX_HISTORY"

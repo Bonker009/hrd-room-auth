@@ -42,10 +42,11 @@ management:
 
 logging:
   file:
-    name: ${LOG_FILE:logs/hrd-room-service.log}
+    # Writable without a bind mount (e.g. Docker USER spring cannot mkdir under /app).
+    name: ${LOG_FILE:${java.io.tmpdir}/hrd-room-service.log}
   logback:
     rollingpolicy:
-      file-name-pattern: ${LOG_FILE_ARCHIVE:logs/archived/hrd-room-service-%d{yyyy-MM-dd}.%i.log.gz}
+      file-name-pattern: ${LOG_FILE_ARCHIVE:${java.io.tmpdir}/hrd-room-service-logs/hrd-room-service-%d{yyyy-MM-dd}.%i.log.gz}
       max-file-size: 10MB
       max-history: 30
       total-size-cap: 1GB
