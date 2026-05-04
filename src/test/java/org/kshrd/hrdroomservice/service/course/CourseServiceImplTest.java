@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.kshrd.hrdroomservice.api.dto.course.CourseResponse;
 import org.kshrd.hrdroomservice.api.dto.course.CourseUpdateRequest;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.YearStatus;
 import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
@@ -24,6 +25,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -84,18 +88,24 @@ class CourseServiceImplTest {
         row.setVersion(0L);
         row.setCreatedAt(LocalDateTime.now());
 
-        when(courseRepository.findAll(specificationAny(), any(Sort.class)))
-                .thenReturn(List.of(row));
+        when(courseRepository.findAll(specificationAny(), any(Pageable.class)))
+                .thenReturn(
+                        new PageImpl<>(
+                                List.of(row),
+                                PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")),
+                                1));
 
-        List<CourseResponse> result = courseService.list("CORE", yearId, false, true);
+        PageResponse<CourseResponse> result =
+                courseService.list("CORE", yearId, false, true, 0, 20);
 
-        assertEquals(1, result.size());
-        assertEquals(courseId, result.getFirst().courseId());
+        assertEquals(1, result.content().size());
+        assertEquals(courseId, result.content().getFirst().courseId());
 
-        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
-        verify(courseRepository).findAll(specificationAny(), sortCaptor.capture());
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(courseRepository).findAll(specificationAny(), pageableCaptor.capture());
         assertEquals(
-                Sort.Direction.DESC, sortCaptor.getValue().getOrderFor("createdAt").getDirection());
+                Sort.Direction.DESC,
+                pageableCaptor.getValue().getSort().getOrderFor("createdAt").getDirection());
     }
 
     @Test

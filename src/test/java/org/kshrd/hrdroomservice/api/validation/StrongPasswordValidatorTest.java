@@ -10,12 +10,14 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.kshrd.hrdroomservice.api.dto.auth.RegisterRequest;
 
 class StrongPasswordValidatorTest {
 
     private static ValidatorFactory factory;
     private static Validator validator;
+
+    /** Local fixture so password policy tests do not depend on removed auth DTOs. */
+    private record PasswordSample(@StrongPassword String password) {}
 
     @BeforeAll
     static void setUp() {
@@ -30,17 +32,15 @@ class StrongPasswordValidatorTest {
 
     @Test
     void strongPassword_passes() {
-        RegisterRequest request =
-                new RegisterRequest("user1", "user1@example.com", "Aa1!bcde", "A", "B");
-        Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
+        PasswordSample request = new PasswordSample("Aa1!bcde");
+        Set<ConstraintViolation<PasswordSample>> violations = validator.validate(request);
         assertThat(violations).isEmpty();
     }
 
     @Test
     void weakPassword_missingComplexity_fails() {
-        RegisterRequest request =
-                new RegisterRequest("user1", "user1@example.com", "password", "A", "B");
-        Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
+        PasswordSample request = new PasswordSample("password");
+        Set<ConstraintViolation<PasswordSample>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
         assertThat(
                         violations.stream()
@@ -50,9 +50,8 @@ class StrongPasswordValidatorTest {
 
     @Test
     void weakPassword_tooShort_fails() {
-        RegisterRequest request =
-                new RegisterRequest("user1", "user1@example.com", "Aa1!x", "A", "B");
-        Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
+        PasswordSample request = new PasswordSample("Aa1!x");
+        Set<ConstraintViolation<PasswordSample>> violations = validator.validate(request);
         assertThat(violations).isNotEmpty();
     }
 }

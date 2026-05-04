@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentByCourseTypeResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.TerminateEnrollmentRequest;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.CourseType;
 import org.kshrd.hrdroomservice.domain.YearStatus;
@@ -21,6 +22,7 @@ import org.kshrd.hrdroomservice.persistence.repository.ClassroomStudentRepositor
 import org.kshrd.hrdroomservice.persistence.repository.CourseRepository;
 import org.kshrd.hrdroomservice.persistence.repository.EnrollmentDetailRepository;
 import org.kshrd.hrdroomservice.persistence.repository.EnrollmentRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,35 +115,48 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EnrollmentResponse> listAll(boolean includeArchived) {
-        List<EnrollmentDetailView> rows =
+    public PageResponse<EnrollmentResponse> listAll(boolean includeArchived, int page, int size) {
+        var pageable = PageRequest.of(page, size);
+        return PageResponse.of(
                 includeArchived
-                        ? enrollmentDetailRepository.findAllByOrderByEnrolledAtDesc()
-                        : enrollmentDetailRepository.findAllActiveYearOnly();
-        return rows.stream().map(this::toResponse).toList();
+                        ? enrollmentDetailRepository.findAllByOrderByEnrolledAtDesc(pageable)
+                        : enrollmentDetailRepository.pageAllActiveYearOnly(pageable),
+                this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public EnrollmentByCourseTypeResponse listByCourseType(boolean includeArchived) {
-        return partitionByType(listAll(includeArchived));
+        List<EnrollmentDetailView> rows =
+                includeArchived
+                        ? enrollmentDetailRepository.findAllByOrderByEnrolledAtDesc()
+                        : enrollmentDetailRepository.findAllActiveYearOnly();
+        return partitionByType(rows.stream().map(this::toResponse).toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<EnrollmentResponse> listByStudent(UUID studentId, boolean includeArchived) {
-        List<EnrollmentDetailView> rows =
+    public PageResponse<EnrollmentResponse> listByStudent(
+            UUID studentId, boolean includeArchived, int page, int size) {
+        var pageable = PageRequest.of(page, size);
+        return PageResponse.of(
                 includeArchived
-                        ? enrollmentDetailRepository.findByStudentIdOrderByEnrolledAtDesc(studentId)
-                        : enrollmentDetailRepository.findByStudentIdActiveYearOnly(studentId);
-        return rows.stream().map(this::toResponse).toList();
+                        ? enrollmentDetailRepository.findByStudentIdOrderByEnrolledAtDesc(
+                                studentId, pageable)
+                        : enrollmentDetailRepository.pageByStudentIdActiveYearOnly(
+                                studentId, pageable),
+                this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public EnrollmentByCourseTypeResponse listByStudentGrouped(
             UUID studentId, boolean includeArchived) {
-        return partitionByType(listByStudent(studentId, includeArchived));
+        List<EnrollmentDetailView> rows =
+                includeArchived
+                        ? enrollmentDetailRepository.findByStudentIdOrderByEnrolledAtDesc(studentId)
+                        : enrollmentDetailRepository.findByStudentIdActiveYearOnly(studentId);
+        return partitionByType(rows.stream().map(this::toResponse).toList());
     }
 
     private EnrollmentByCourseTypeResponse partitionByType(List<EnrollmentResponse> rows) {
@@ -159,10 +174,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EnrollmentResponse> listByCourse(UUID courseId) {
-        return enrollmentDetailRepository.findByCourseIdOrderByEnrolledAtDesc(courseId).stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<EnrollmentResponse> listByCourse(UUID courseId, int page, int size) {
+        return PageResponse.of(
+                enrollmentDetailRepository.findByCourseIdOrderByEnrolledAtDesc(
+                        courseId, PageRequest.of(page, size)),
+                this::toResponse);
     }
 
     @Override

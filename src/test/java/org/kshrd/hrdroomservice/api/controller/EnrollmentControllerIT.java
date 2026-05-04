@@ -46,8 +46,8 @@ class EnrollmentControllerIT extends IntegrationTest {
 
         mockMvc.perform(get("/api/v4/enrollments/student/{id}", studentId).with(student(studentId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].courseId").value(basicCourseId.toString()));
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].courseId").value(basicCourseId.toString()));
     }
 
     @Test
@@ -97,7 +97,7 @@ class EnrollmentControllerIT extends IntegrationTest {
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
-        JsonNode basic = objectMapper.readTree(list).path("data").get(0);
+        JsonNode basic = objectMapper.readTree(list).path("data").path("content").get(0);
         return UUID.fromString(basic.path("courseId").asText());
     }
 }

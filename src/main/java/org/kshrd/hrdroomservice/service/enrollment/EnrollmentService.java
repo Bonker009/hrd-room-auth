@@ -1,24 +1,25 @@
 package org.kshrd.hrdroomservice.service.enrollment;
 
-import java.util.List;
 import java.util.UUID;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentByCourseTypeResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.TerminateEnrollmentRequest;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 
 public interface EnrollmentService {
 
     EnrollmentResponse enroll(UUID studentId, UUID courseId, UUID actorId);
 
-    List<EnrollmentResponse> listAll(boolean includeArchived);
+    PageResponse<EnrollmentResponse> listAll(boolean includeArchived, int page, int size);
 
     EnrollmentByCourseTypeResponse listByCourseType(boolean includeArchived);
 
-    List<EnrollmentResponse> listByStudent(UUID studentId, boolean includeArchived);
+    PageResponse<EnrollmentResponse> listByStudent(
+            UUID studentId, boolean includeArchived, int page, int size);
 
     EnrollmentByCourseTypeResponse listByStudentGrouped(UUID studentId, boolean includeArchived);
 
-    List<EnrollmentResponse> listByCourse(UUID courseId);
+    PageResponse<EnrollmentResponse> listByCourse(UUID courseId, int page, int size);
 
     EnrollmentResponse getById(UUID enrollmentId);
 

@@ -2,18 +2,21 @@ package org.kshrd.hrdroomservice.api.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import java.util.List;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearRequest;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearResponse;
 import org.kshrd.hrdroomservice.api.dto.response.ApiResponse;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.dto.response.ResponseUtil;
 import org.kshrd.hrdroomservice.service.academicyear.AcademicYearService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v4/academic-years")
 @RequiredArgsConstructor
+@Validated
 @SecurityRequirement(name = "bearerAuth")
 public class AcademicYearController {
 
@@ -59,6 +63,7 @@ public class AcademicYearController {
     }
 
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<AcademicYearResponse>> active() {
         return academicYearService
                 .findActive()
@@ -75,8 +80,10 @@ public class AcademicYearController {
 
     @GetMapping
     @PreAuthorize("hasRole('admin')")
-    public ResponseEntity<ApiResponse<List<AcademicYearResponse>>> list(
-            @RequestParam(defaultValue = "false") boolean includeArchived) {
-        return ResponseUtil.ok(academicYearService.list(includeArchived), "OK");
+    public ResponseEntity<ApiResponse<PageResponse<AcademicYearResponse>>> list(
+            @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseUtil.ok(academicYearService.list(includeArchived, page, size), "OK");
     }
 }

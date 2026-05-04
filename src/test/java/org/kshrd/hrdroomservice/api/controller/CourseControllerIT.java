@@ -34,18 +34,18 @@ class CourseControllerIT extends IntegrationTest {
                                 .param("academicYearId", yearId.toString())
                                 .with(admin(adminId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.data[?(@.type=='BASIC')]").exists())
-                .andExpect(jsonPath("$.data[?(@.type=='ADVANCED')]").exists());
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[?(@.type=='BASIC')]").exists())
+                .andExpect(jsonPath("$.data.content[?(@.type=='ADVANCED')]").exists());
 
         mockMvc.perform(get("/api/v4/courses").param("type", "BASIC").with(teacher(teacherId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].type").value("BASIC"));
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].type").value("BASIC"));
 
         mockMvc.perform(get("/api/v4/courses").with(student(studentId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2));
+                .andExpect(jsonPath("$.data.content.length()").value(2));
     }
 
     @Test
@@ -62,7 +62,7 @@ class CourseControllerIT extends IntegrationTest {
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
-        JsonNode basic = objectMapper.readTree(list).path("data").get(0);
+        JsonNode basic = objectMapper.readTree(list).path("data").path("content").get(0);
         UUID courseId = UUID.fromString(basic.path("courseId").asText());
         long originalVersion = basic.path("version").asLong();
 

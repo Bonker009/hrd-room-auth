@@ -1,13 +1,15 @@
 package org.kshrd.hrdroomservice.api.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import java.util.List;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentByCourseTypeResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.EnrollmentResponse;
 import org.kshrd.hrdroomservice.api.dto.enrollment.TerminateEnrollmentRequest;
 import org.kshrd.hrdroomservice.api.dto.response.ApiResponse;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.dto.response.ResponseUtil;
 import org.kshrd.hrdroomservice.security.SecurityUtils;
 import org.kshrd.hrdroomservice.service.enrollment.EnrollmentService;
@@ -16,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v4/enrollments")
 @RequiredArgsConstructor
+@Validated
 @SecurityRequirement(name = "bearerAuth")
 public class EnrollmentController {
 
@@ -46,9 +50,11 @@ public class EnrollmentController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('admin','teacher')")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> listAll(
-            @RequestParam(defaultValue = "false") boolean includeArchived) {
-        return ResponseUtil.ok(enrollmentService.listAll(includeArchived), "OK");
+    public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> listAll(
+            @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseUtil.ok(enrollmentService.listAll(includeArchived, page, size), "OK");
     }
 
     @GetMapping("/by-course-type")
@@ -60,9 +66,11 @@ public class EnrollmentController {
 
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> byStudent(
+    public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> byStudent(
             @PathVariable UUID studentId,
-            @RequestParam(defaultValue = "false") boolean includeArchived) {
+            @RequestParam(defaultValue = "false") boolean includeArchived,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         if (SecurityUtils.hasRole("student")) {
             UUID self =
                     SecurityUtils.currentUserId()
@@ -74,7 +82,8 @@ public class EnrollmentController {
                 return ResponseUtil.forbidden("Students cannot include archived enrollments");
             }
         }
-        return ResponseUtil.ok(enrollmentService.listByStudent(studentId, includeArchived), "OK");
+        return ResponseUtil.ok(
+                enrollmentService.listByStudent(studentId, includeArchived, page, size), "OK");
     }
 
     @GetMapping("/student/{studentId}/by-course-type")
@@ -99,9 +108,11 @@ public class EnrollmentController {
 
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('admin','teacher')")
-    public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> byCourse(
-            @PathVariable UUID courseId) {
-        return ResponseUtil.ok(enrollmentService.listByCourse(courseId), "OK");
+    public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> byCourse(
+            @PathVariable UUID courseId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+        return ResponseUtil.ok(enrollmentService.listByCourse(courseId, page, size), "OK");
     }
 
     @GetMapping("/{enrollmentId}")

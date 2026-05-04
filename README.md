@@ -116,12 +116,12 @@ Validation failure (`@Valid` + `MethodArgumentNotValidException`):
 {
   "success": false,
   "statusCode": 400,
-  "message": "email: must be a well-formed email address; password: must not be blank",
+  "message": "username: must not be blank; password: must not be blank",
   "errorCode": "VALIDATION_ERROR",
-  "path": "/api/v4/auth/register",
+  "path": "/api/v4/auth/login",
   "details": {
     "violations": [
-      { "field": "email", "message": "must be a well-formed email address" },
+      { "field": "username", "message": "must not be blank" },
       { "field": "password", "message": "must not be blank" }
     ]
   }
@@ -180,16 +180,6 @@ When API changes are intentional:
 
 Then run the same test again without `-Dopenapi.update=true` to confirm it is stable, and commit the
 updated `src/test/resources/openapi/openapi.json`.
-
-## Database audit trail (`audit_logs`)
-
-Domain rows that extend `AuditableEntity` (academic years, courses, enrollments, classrooms) emit rows into
-the `audit_logs` table on **CREATE**, **UPDATE**, and **DELETE** via a JPA entity listener. Each row stores
-`action`, `entity_type`, `entity_id`, optional `actor_id` (from the security context when present),
-optional `request_id` (from MDC when present), and a short `summary`.
-
-Bulk JPQL updates and entities that do not extend `AuditableEntity` (for example junction tables or the
-read-only enrollment detail view) are **not** recorded in `audit_logs`.
 
 ## File logging
 

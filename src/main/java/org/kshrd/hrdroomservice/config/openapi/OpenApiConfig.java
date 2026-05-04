@@ -21,9 +21,8 @@ public class OpenApiConfig {
                                 .description(
                                         "REST API for HRD room service operations, including authentication, "
                                                 + "academic years, classrooms, courses, and enrollments. "
-                                                + "Obtain a JWT from POST /api/v4/auth/login or /api/v4/auth/refresh; "
-                                                + "send it as Bearer authentication on protected routes. "
-                                                + "Use POST /api/v4/auth/logout with the refresh token to end the session.")
+                                                + "Obtain a JWT from POST /api/v4/auth/login; "
+                                                + "send it as Bearer authentication on protected routes.")
                                 .contact(
                                         new Contact()
                                                 .name("HRD Room Service Team")

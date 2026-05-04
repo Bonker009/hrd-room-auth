@@ -1,16 +1,17 @@
 package org.kshrd.hrdroomservice.service.course;
 
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.kshrd.hrdroomservice.api.dto.course.CourseResponse;
 import org.kshrd.hrdroomservice.api.dto.course.CourseUpdateRequest;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.YearStatus;
 import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
 import org.kshrd.hrdroomservice.persistence.entity.CourseEntity;
 import org.kshrd.hrdroomservice.persistence.repository.AcademicYearRepository;
 import org.kshrd.hrdroomservice.persistence.repository.CourseRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -47,15 +48,18 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CourseResponse> list(
-            String type, UUID academicYearId, boolean includeArchived, boolean onlyActiveYears) {
-        return courseRepository
-                .findAll(
+    public PageResponse<CourseResponse> list(
+            String type,
+            UUID academicYearId,
+            boolean includeArchived,
+            boolean onlyActiveYears,
+            int page,
+            int size) {
+        return PageResponse.of(
+                courseRepository.findAll(
                         withFilters(type, academicYearId, includeArchived, onlyActiveYears),
-                        Sort.by(Sort.Direction.DESC, "createdAt"))
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))),
+                this::toResponse);
     }
 
     @Override

@@ -1,11 +1,11 @@
 package org.kshrd.hrdroomservice.service.academicyear;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearRequest;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearResponse;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
 import org.kshrd.hrdroomservice.domain.CourseType;
 import org.kshrd.hrdroomservice.domain.YearStatus;
@@ -14,6 +14,7 @@ import org.kshrd.hrdroomservice.persistence.entity.AcademicYearEntity;
 import org.kshrd.hrdroomservice.persistence.entity.CourseEntity;
 import org.kshrd.hrdroomservice.persistence.repository.AcademicYearRepository;
 import org.kshrd.hrdroomservice.persistence.repository.CourseRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -126,17 +127,17 @@ public class AcademicYearServiceImpl implements AcademicYearService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AcademicYearResponse> list(boolean includeArchived) {
+    public PageResponse<AcademicYearResponse> list(boolean includeArchived, int page, int size) {
         if (includeArchived) {
-            return academicYearRepository.findAllByOrderByStartDateDesc().stream()
-                    .map(this::toResponse)
-                    .toList();
+            return PageResponse.of(
+                    academicYearRepository.findAllByOrderByStartDateDesc(
+                            PageRequest.of(page, size)),
+                    this::toResponse);
         }
-        return academicYearRepository
-                .findByStatusOrderByStartDateDesc(YearStatus.ACTIVE.name())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return PageResponse.of(
+                academicYearRepository.findByStatusOrderByStartDateDesc(
+                        YearStatus.ACTIVE.name(), PageRequest.of(page, size)),
+                this::toResponse);
     }
 
     private AcademicYearResponse toResponse(AcademicYearEntity e) {

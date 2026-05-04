@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.kshrd.hrdroomservice.api.dto.response.ApiResponse;
@@ -19,7 +20,12 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.server.resource.BearerTokenError;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -254,16 +260,85 @@ public class GlobalExceptionHandler {
                 null);
     }
 
+    @ExceptionHandler(AuthenticationServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationService(
+            AuthenticationServiceException ex, HttpServletRequest req) {
+        log.warn("Identity provider unavailable for request path={}", req.getRequestURI(), ex);
+        return respond(
+                HttpStatus.BAD_GATEWAY,
+                "Identity provider is unavailable.",
+                "IDP_UNAVAILABLE",
+                req,
+                null);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuth(
             AuthenticationException ex, HttpServletRequest req) {
+        if (ex instanceof OAuth2AuthenticationException oae) {
+            return handleOAuth2Authentication(oae, req);
+        }
+        log.warn("Authentication failed for request path={}", req.getRequestURI(), ex);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .body(
                         ApiResponse.error(
                                 HttpStatus.UNAUTHORIZED.value(),
                                 "Authentication is required for this resource.",
                                 "UNAUTHORIZED",
                                 req.getRequestURI()));
+    }
+
+    private ResponseEntity<ApiResponse<Void>> handleOAuth2Authentication(
+            OAuth2AuthenticationException ex, HttpServletRequest req) {
+        OAuth2Error error = ex.getError();
+        if (error == null) {
+            error = new OAuth2Error("invalid_request");
+        }
+        HttpStatus status =
+                error instanceof BearerTokenError bte
+                        ? bte.getHttpStatus()
+                        : HttpStatus.UNAUTHORIZED;
+        String description = Objects.requireNonNullElse(error.getDescription(), "");
+        String message = "Bearer token authentication failed.";
+        if (StringUtils.hasText(description)) {
+            message = description;
+        }
+        log.warn(
+                "OAuth2 authentication failed for request path={} error={}",
+                req.getRequestURI(),
+                Objects.requireNonNullElse(error.getErrorCode(), "unknown"));
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.WWW_AUTHENTICATE, buildWwwAuthenticateHeader(error))
+                .body(
+                        ApiResponse.error(
+                                status.value(), message, "AUTH_TOKEN_ERROR", req.getRequestURI()));
+    }
+
+    private static String buildWwwAuthenticateHeader(OAuth2Error error) {
+        StringJoiner joiner = new StringJoiner(", ", "Bearer ", "");
+        joiner.add(
+                "error=\""
+                        + escapeQuoted(
+                                Objects.requireNonNullElse(error.getErrorCode(), "server_error"))
+                        + "\"");
+        if (StringUtils.hasText(error.getDescription())) {
+            joiner.add("error_description=\"" + escapeQuoted(error.getDescription()) + "\"");
+        }
+        if (StringUtils.hasText(error.getUri())) {
+            joiner.add("error_uri=\"" + escapeQuoted(error.getUri()) + "\"");
+        }
+        if (error instanceof BearerTokenError bearer && StringUtils.hasText(bearer.getScope())) {
+            joiner.add("scope=\"" + escapeQuoted(bearer.getScope()) + "\"");
+        }
+        return joiner.toString();
+    }
+
+    private static String escapeQuoted(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     @ExceptionHandler(AccessDeniedException.class)

@@ -2,6 +2,8 @@ package org.kshrd.hrdroomservice.api.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,8 +48,8 @@ public class ClassroomController {
     @GetMapping("/my-classrooms")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> myClassrooms(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         UUID teacherId =
                 SecurityUtils.currentUserId()
                         .orElseThrow(() -> new AccessDeniedException("Missing JWT subject"));
@@ -88,8 +90,8 @@ public class ClassroomController {
     @GetMapping
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> list(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         return ResponseUtil.ok(classroomService.listAll(page, size), "OK");
     }
 

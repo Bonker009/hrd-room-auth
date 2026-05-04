@@ -6,15 +6,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearRequest;
 import org.kshrd.hrdroomservice.support.IntegrationTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 
@@ -25,9 +28,25 @@ class ErrorContractIT extends IntegrationTest {
     void unauthorized_is_api_response_shape() throws Exception {
         mockMvc.perform(get("/api/v4/courses"))
                 .andExpect(status().isUnauthorized())
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.statusCode").value(401))
                 .andExpect(jsonPath("$.errorCode").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void malformed_bearer_token_returns_auth_token_error_and_www_authenticate() throws Exception {
+        mockMvc.perform(
+                        get("/api/v4/courses")
+                                .header(HttpHeaders.AUTHORIZATION, "Bearer not-a-valid-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(
+                        header().string(
+                                        HttpHeaders.WWW_AUTHENTICATE,
+                                        Matchers.startsWith("Bearer error=")))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.statusCode").value(401))
+                .andExpect(jsonPath("$.errorCode").value("AUTH_TOKEN_ERROR"));
     }
 
     @Test
@@ -193,7 +212,7 @@ class ErrorContractIT extends IntegrationTest {
                         .andReturn()
                         .getResponse()
                         .getContentAsString();
-        JsonNode basic = objectMapper.readTree(list).path("data").get(0);
+        JsonNode basic = objectMapper.readTree(list).path("data").path("content").get(0);
         return UUID.fromString(basic.path("courseId").asText());
     }
 }

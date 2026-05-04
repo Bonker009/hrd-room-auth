@@ -15,10 +15,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
-/**
- * Timeout-aware HTTP calls to Keycloak OIDC token and logout endpoints (password grant, refresh,
- * logout).
- */
+/** Timeout-aware HTTP calls to Keycloak OIDC token endpoint (password grant for login). */
 final class KeycloakOAuthHttpClient {
 
     private final KeycloakAuthProperties properties;
@@ -54,34 +51,6 @@ final class KeycloakOAuthHttpClient {
         form.add(OAuth2Constants.PASSWORD, password);
         addClientCredentials(form);
         return postToken(form);
-    }
-
-    AuthTokenResponse refreshGrant(String refreshToken) {
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add(OAuth2Constants.GRANT_TYPE, OAuth2Constants.REFRESH_TOKEN);
-        form.add(OAuth2Constants.REFRESH_TOKEN, refreshToken);
-        addClientCredentials(form);
-        return postToken(form);
-    }
-
-    void logout(String refreshToken) {
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("client_id", properties.getClientId());
-        if (hasClientSecret()) {
-            form.add("client_secret", properties.getClientSecret());
-        }
-        form.add(OAuth2Constants.REFRESH_TOKEN, refreshToken);
-        try {
-            restClient
-                    .post()
-                    .uri(logoutUrl())
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                    .body(form)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (RestClientResponseException ex) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "Logout failed", "AUTH_FAILED");
-        }
     }
 
     private void addClientCredentials(MultiValueMap<String, String> form) {
@@ -148,13 +117,6 @@ final class KeycloakOAuthHttpClient {
                 + "/realms/"
                 + properties.getRealm()
                 + "/protocol/openid-connect/token";
-    }
-
-    private String logoutUrl() {
-        return trimTrailingSlash(properties.getAuthServerUrl())
-                + "/realms/"
-                + properties.getRealm()
-                + "/protocol/openid-connect/logout";
     }
 
     private static String trimTrailingSlash(String url) {

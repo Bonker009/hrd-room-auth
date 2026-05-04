@@ -12,9 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.kshrd.hrdroomservice.api.dto.auth.AuthTokenResponse;
-import org.kshrd.hrdroomservice.api.dto.auth.RefreshTokenRequest;
-import org.kshrd.hrdroomservice.api.dto.auth.RegisterRequest;
-import org.kshrd.hrdroomservice.api.exception.ApiException;
+import org.kshrd.hrdroomservice.api.dto.auth.LoginRequest;
 import org.kshrd.hrdroomservice.api.exception.GlobalExceptionHandler;
 import org.kshrd.hrdroomservice.service.auth.AuthService;
 import org.mockito.Mock;
@@ -45,47 +43,22 @@ class AuthControllerTest {
     }
 
     @Test
-    void refresh_returnsWrappedTokenResponse() throws Exception {
-        when(authService.refresh(any(RefreshTokenRequest.class)))
+    void login_returnsWrappedTokenResponse() throws Exception {
+        when(authService.login(any(LoginRequest.class)))
                 .thenReturn(
                         new AuthTokenResponse(
-                                "access-jwt", "new-refresh", 300L, 1800L, "Bearer", "openid"));
+                                "access-jwt", "refresh", 300L, 1800L, "Bearer", "openid"));
 
         mockMvc.perform(
-                        post("/api/v4/auth/refresh")
+                        post("/api/v4/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         objectMapper.writeValueAsString(
-                                                new RefreshTokenRequest("old-refresh"))))
+                                                new LoginRequest("user", "secret"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.accessToken").value("access-jwt"))
-                .andExpect(jsonPath("$.data.refreshToken").value("new-refresh"));
+                .andExpect(jsonPath("$.data.accessToken").value("access-jwt"));
 
-        verify(authService).refresh(any(RefreshTokenRequest.class));
-    }
-
-    @Test
-    void register_dummyEmail_returnsRegistrationRejected() throws Exception {
-        when(authService.register(any(RegisterRequest.class)))
-                .thenThrow(
-                        ApiException.registrationRejected(
-                                "Disposable email addresses are not allowed", "email"));
-
-        mockMvc.perform(
-                        post("/api/v4/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        objectMapper.writeValueAsString(
-                                                new RegisterRequest(
-                                                        "student01",
-                                                        "foo@mailinator.com",
-                                                        "Abcd1234@",
-                                                        "John",
-                                                        "Doe"))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.errorCode").value("REGISTRATION_REJECTED"))
-                .andExpect(jsonPath("$.details.field").value("email"));
+        verify(authService).login(any(LoginRequest.class));
     }
 }

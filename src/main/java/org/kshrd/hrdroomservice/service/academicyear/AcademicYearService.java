@@ -1,10 +1,10 @@
 package org.kshrd.hrdroomservice.service.academicyear;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearRequest;
 import org.kshrd.hrdroomservice.api.dto.academic.AcademicYearResponse;
+import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 
 public interface AcademicYearService {
 
@@ -20,5 +20,5 @@ public interface AcademicYearService {
 
     AcademicYearResponse getById(UUID id);
 
-    List<AcademicYearResponse> list(boolean includeArchived);
+    PageResponse<AcademicYearResponse> list(boolean includeArchived, int page, int size);
 }

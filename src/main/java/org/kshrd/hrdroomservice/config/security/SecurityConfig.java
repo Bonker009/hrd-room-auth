@@ -46,7 +46,11 @@ public class SecurityConfig {
         http.oauth2ResourceServer(
                 oauth2 ->
                         oauth2.jwt(
-                                jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+                                        jwt ->
+                                                jwt.jwtAuthenticationConverter(
+                                                        jwtAuthenticationConverter))
+                                .authenticationEntryPoint(authenticationEntryPoint)
+                                .accessDeniedHandler(accessDeniedHandler));
 
         http.exceptionHandling(
                 ex ->

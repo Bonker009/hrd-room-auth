@@ -156,23 +156,16 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ClassroomResponse> myClassrooms(UUID teacherId, int page, int size) {
-        long total = classroomRepository.countForTeacher(teacherId);
-        List<ClassroomResponse> content =
-                classroomRepository.pageForTeacher(teacherId, PageRequest.of(page, size)).stream()
-                        .map(this::toBasic)
-                        .toList();
-        return PageResponse.of(content, total, page, size);
+        return PageResponse.of(
+                classroomRepository.pageForTeacher(teacherId, PageRequest.of(page, size)),
+                this::toBasic);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ClassroomResponse> listAll(int page, int size) {
-        long total = classroomRepository.count();
-        List<ClassroomResponse> content =
-                classroomRepository.pageAll(PageRequest.of(page, size)).stream()
-                        .map(this::toBasic)
-                        .toList();
-        return PageResponse.of(content, total, page, size);
+        return PageResponse.of(
+                classroomRepository.pageAll(PageRequest.of(page, size)), this::toBasic);
     }
 
     @Override
