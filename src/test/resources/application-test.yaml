@@ -22,3 +22,12 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+
+# Avoid OTLP export to VictoriaLogs during tests (no collector on localhost).
+otel:
+  logs:
+    exporter: none
+  metrics:
+    exporter: none
+  traces:
+    exporter: none

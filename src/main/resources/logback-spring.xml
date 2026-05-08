@@ -47,10 +47,20 @@
         </encoder>
     </appender>
 
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureMarkerAttribute>true</captureMarkerAttribute>
+        <captureKeyValuePairAttributes>true</captureKeyValuePairAttributes>
+        <captureLoggerContext>true</captureLoggerContext>
+        <captureMdcAttributes>*</captureMdcAttributes>
+    </appender>
+
     <springProfile name="json">
         <root level="INFO">
             <appender-ref ref="CONSOLE_JSON"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="OTEL"/>
         </root>
     </springProfile>
 
@@ -58,6 +68,7 @@
         <root level="INFO">
             <appender-ref ref="CONSOLE_PRETTY"/>
             <appender-ref ref="FILE"/>
+            <appender-ref ref="OTEL"/>
         </root>
     </springProfile>
 </configuration>

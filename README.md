@@ -51,6 +51,17 @@ Example:
 POSTGRES_PASSWORD=secret docker compose up --build
 ```
 
+## Logging client IPs
+
+The `clientIp` field in logs (and in VictoriaLogs when OTLP is enabled) comes from `ClientIpResolver`:
+
+- If the **immediate TCP peer** is in `app.observability.trusted-proxy-cidrs` (private/loopback ranges by default), the resolver uses `CF-Connecting-IP`, `True-Client-IP`, RFC 7239 `Forwarded`, `X-Forwarded-For`, then `X-Real-IP`, in that order.
+- If the peer is **not** trusted (e.g. a client on the public internet), forwarded headers are **ignored** to prevent spoofing, and `request.getRemoteAddr()` is used.
+
+**Docker Compose without a reverse proxy:** the peer is usually the Docker bridge (e.g. `172.17.0.1`), not the browser. For real client IPs, put **Nginx**, **Traefik**, or similar in front and set `X-Forwarded-For` (e.g. Nginx: `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`).
+
+`server.forward-headers-strategy: native` is enabled so Tomcat honors standard forwarded headers when a proxy is used.
+
 ## Error Handling
 
 This project centralizes API exception mapping in `GlobalExceptionHandler` so controllers and services can

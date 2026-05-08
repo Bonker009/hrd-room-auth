@@ -13,6 +13,12 @@ public class RequestContextFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
 
+    private final ClientIpResolver clientIpResolver;
+
+    public RequestContextFilter(ClientIpResolver clientIpResolver) {
+        this.clientIpResolver = clientIpResolver;
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -21,7 +27,7 @@ public class RequestContextFilter extends OncePerRequestFilter {
         response.setHeader(REQUEST_ID_HEADER, requestId);
 
         MDC.put("requestId", requestId);
-        MDC.put("clientIp", ClientIpResolver.resolve(request));
+        MDC.put("clientIp", clientIpResolver.resolve(request));
         MDC.put("method", request.getMethod());
         MDC.put("path", request.getRequestURI());
         try {

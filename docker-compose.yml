@@ -32,6 +32,18 @@ services:
       retries: 10
       start_period: 15s
 
+  victorialogs:
+    image: victoriametrics/victoria-logs:latest
+    container_name: hrd-room-service-victorialogs
+    ports:
+      - "${VICTORIALOGS_PORT:-9428}:9428"
+    volumes:
+      - victorialogs_data:/victoria-logs-data
+    command:
+      - "--storageDataPath=/victoria-logs-data"
+      - "--retentionPeriod=14d"
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -45,10 +57,18 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST: db
       DB_PORT: 5432
+      OTEL_SERVICE_NAME: hrd-room-service
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_EXPORTER: none
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://victorialogs:9428/insert/opentelemetry/v1/logs
     depends_on:
       db:
         condition: service_healthy
       rustfs:
+        condition: service_started
+      victorialogs:
         condition: service_started
     ports:
       - "${APP_PORT:-8080}:8080"
@@ -57,3 +77,4 @@ services:
 volumes:
   postgres_data:
   rustfs_data:
+  victorialogs_data:

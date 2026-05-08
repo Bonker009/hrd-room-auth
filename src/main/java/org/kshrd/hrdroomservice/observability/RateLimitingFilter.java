@@ -20,11 +20,16 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final ObjectMapper objectMapper;
     private final RateLimitProperties properties;
+    private final ClientIpResolver clientIpResolver;
     private final Cache<String, Bucket> buckets;
 
-    public RateLimitingFilter(ObjectMapper objectMapper, RateLimitProperties properties) {
+    public RateLimitingFilter(
+            ObjectMapper objectMapper,
+            RateLimitProperties properties,
+            ClientIpResolver clientIpResolver) {
         this.objectMapper = objectMapper;
         this.properties = properties;
+        this.clientIpResolver = clientIpResolver;
         this.buckets =
                 Caffeine.newBuilder()
                         .maximumSize(20_000)
@@ -49,7 +54,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return;
         }
 
-        String clientKey = ClientIpResolver.resolve(request);
+        String clientKey = clientIpResolver.resolve(request);
         Bucket bucket = buckets.get(clientKey, k -> newBucket());
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);

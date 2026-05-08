@@ -8,13 +8,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties(RateLimitProperties.class)
+@EnableConfigurationProperties({RateLimitProperties.class, ObservabilityProperties.class})
 public class ObservabilityFilterConfig {
 
     @Bean
-    FilterRegistrationBean<RequestContextFilter> requestContextFilterRegistration() {
+    FilterRegistrationBean<RequestContextFilter> requestContextFilterRegistration(
+            ClientIpResolver clientIpResolver) {
         FilterRegistrationBean<RequestContextFilter> registration =
-                new FilterRegistrationBean<>(new RequestContextFilter());
+                new FilterRegistrationBean<>(new RequestContextFilter(clientIpResolver));
         registration.setOrder(-200);
         return registration;
     }
@@ -29,10 +30,13 @@ public class ObservabilityFilterConfig {
 
     @Bean
     FilterRegistrationBean<RateLimitingFilter> rateLimitingFilterRegistration(
-            ObjectMapper objectMapper, RateLimitProperties rateLimitProperties) {
+            ObjectMapper objectMapper,
+            RateLimitProperties rateLimitProperties,
+            ClientIpResolver clientIpResolver) {
         FilterRegistrationBean<RateLimitingFilter> registration =
                 new FilterRegistrationBean<>(
-                        new RateLimitingFilter(objectMapper, rateLimitProperties));
+                        new RateLimitingFilter(
+                                objectMapper, rateLimitProperties, clientIpResolver));
         registration.setOrder(-180);
         return registration;
     }

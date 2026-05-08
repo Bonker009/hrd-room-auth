@@ -27,16 +27,6 @@ public class OpenApiConfig {
                                         new Contact()
                                                 .name("HRD Room Service Team")
                                                 .email("penhseyha4980@gmail.com")))
-                // .servers(
-                // List.of(
-                // new Server()
-                // .url("http://localhost:7648")
-                // .description("Local development"),
-                // new Server().url("https://api.example.com").description("Production")))
-                // .externalDocs(
-                // new ExternalDocumentation()
-                // .description("Project documentation")
-                // .url("https://example.com/docs"))
                 .components(
                         new Components()
                                 .addSecuritySchemes(

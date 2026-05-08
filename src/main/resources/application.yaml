@@ -1,5 +1,6 @@
 server:
   port: ${APP_PORT:${SERVER_PORT:8080}}
+  forward-headers-strategy: native
 
 spring:
   application:
@@ -51,7 +52,30 @@ logging:
       max-history: 30
       total-size-cap: 1GB
 
+otel:
+  service:
+    name: ${spring.application.name:hrd-room-service}
+  logs:
+    exporter: otlp
+  metrics:
+    exporter: none
+  traces:
+    exporter: none
+  exporter:
+    otlp:
+      protocol: http/protobuf
+      logs:
+        endpoint: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:http://localhost:9428/insert/opentelemetry/v1/logs}
+
 app:
+  observability:
+    trusted-proxy-cidrs:
+      - 127.0.0.0/8
+      - ::1/128
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - fc00::/7
   security:
     enabled: ${APP_SECURITY_ENABLED:true}
   rate-limit:
