@@ -7,6 +7,7 @@ import org.kshrd.hrdroomservice.api.dto.classroom.AssessmentSummaryResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomRequest;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomStudentCountResponse;
+import org.kshrd.hrdroomservice.api.dto.classroom.StudentCurrentClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.UuidListRequest;
 import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,4 +63,6 @@ public interface ClassroomService {
     List<ClassroomStudentCountResponse> studentCounts();
 
     void moveStudent(UUID sourceClassroomId, UUID targetClassroomId, UUID studentId);
+
+    StudentCurrentClassroomResponse currentForStudent(UUID studentId);
 }

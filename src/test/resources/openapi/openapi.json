@@ -149,6 +149,8 @@
     "/api/v4/classrooms/{classroomId}" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Get a classroom by ID",
+        "description" : "Returns the basic details of a single classroom.",
         "operationId" : "byId_1",
         "parameters" : [ {
           "name" : "classroomId",
@@ -177,6 +179,8 @@
       },
       "put" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Update a classroom",
+        "description" : "Updates an existing classroom's name, abbreviation, description or image.",
         "operationId" : "update_1",
         "parameters" : [ {
           "name" : "classroomId",
@@ -215,6 +219,8 @@
       },
       "delete" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Delete a classroom",
+        "description" : "Removes a classroom along with its teacher, student, subject and assessment links.",
         "operationId" : "delete",
         "parameters" : [ {
           "name" : "classroomId",
@@ -468,6 +474,8 @@
     "/api/v4/classrooms" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List all classrooms (paged)",
+        "description" : "Returns every classroom in the system, newest first.",
         "operationId" : "list",
         "parameters" : [ {
           "name" : "page",
@@ -509,6 +517,8 @@
       },
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Create a classroom",
+        "description" : "Creates a new classroom under the active academic year.",
         "operationId" : "create",
         "requestBody" : {
           "content" : {
@@ -540,6 +550,8 @@
     "/api/v4/classrooms/{sourceClassroomId}/move-student" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Move a student between classrooms",
+        "description" : "Moves a student to another classroom within the same active academic year.",
         "operationId" : "moveStudent",
         "parameters" : [ {
           "name" : "sourceClassroomId",
@@ -586,6 +598,8 @@
     "/api/v4/classrooms/{classroomId}/upload-image" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Upload a classroom cover image",
+        "description" : "Uploads a JPEG/PNG/GIF/WebP image (max 20MB) and stores its public URL.",
         "operationId" : "uploadImage",
         "parameters" : [ {
           "name" : "classroomId",
@@ -632,6 +646,8 @@
     "/api/v4/classrooms/{classroomId}/remove-teachers" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Remove teachers from a classroom",
+        "description" : "Unlinks the given teachers from the classroom.",
         "operationId" : "removeTeachers",
         "parameters" : [ {
           "name" : "classroomId",
@@ -672,6 +688,8 @@
     "/api/v4/classrooms/{classroomId}/remove-students" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Remove students from a classroom",
+        "description" : "Unlinks the given students from the classroom.",
         "operationId" : "removeStudents",
         "parameters" : [ {
           "name" : "classroomId",
@@ -712,6 +730,8 @@
     "/api/v4/classrooms/{classroomId}/remove-assessments" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Remove assessments from a classroom",
+        "description" : "Unlinks the given assessments from the classroom.",
         "operationId" : "removeAssessments",
         "parameters" : [ {
           "name" : "classroomId",
@@ -752,6 +772,8 @@
     "/api/v4/classrooms/{classroomId}/assign-teachers" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Assign teachers to a classroom",
+        "description" : "Links one or more teachers to the given classroom.",
         "operationId" : "assignTeachers",
         "parameters" : [ {
           "name" : "classroomId",
@@ -792,6 +814,8 @@
     "/api/v4/classrooms/{classroomId}/assign-subject" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Assign a subject to a classroom",
+        "description" : "Links one subject to the given classroom.",
         "operationId" : "assignSubject",
         "parameters" : [ {
           "name" : "classroomId",
@@ -830,6 +854,8 @@
     "/api/v4/classrooms/{classroomId}/assign-students" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Assign students to a classroom",
+        "description" : "Links one or more students to the given classroom.",
         "operationId" : "assignStudents",
         "parameters" : [ {
           "name" : "classroomId",
@@ -870,6 +896,8 @@
     "/api/v4/classrooms/{classroomId}/assign-assessments" : {
       "post" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Assign assessments to a classroom",
+        "description" : "Links one or more assessments to the given classroom.",
         "operationId" : "assignAssessments",
         "parameters" : [ {
           "name" : "classroomId",
@@ -1292,6 +1320,8 @@
     "/api/v4/classrooms/{classroomId}/teachers" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List teachers in a classroom",
+        "description" : "Returns the IDs of all teachers assigned to the classroom.",
         "operationId" : "teachers",
         "parameters" : [ {
           "name" : "classroomId",
@@ -1322,6 +1352,8 @@
     "/api/v4/classrooms/{classroomId}/subjects" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List subjects in a classroom",
+        "description" : "Returns the IDs of all subjects taught in the classroom.",
         "operationId" : "subjects",
         "parameters" : [ {
           "name" : "classroomId",
@@ -1352,6 +1384,8 @@
     "/api/v4/classrooms/{classroomId}/students" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List students in a classroom",
+        "description" : "Returns the IDs of all students currently enrolled in the classroom.",
         "operationId" : "students",
         "parameters" : [ {
           "name" : "classroomId",
@@ -1382,6 +1416,8 @@
     "/api/v4/classrooms/{classroomId}/assessments" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List assessments assigned to a classroom",
+        "description" : "Returns the assessment summaries linked to the given classroom.",
         "operationId" : "assessments",
         "parameters" : [ {
           "name" : "classroomId",
@@ -1412,6 +1448,8 @@
     "/api/v4/classrooms/with-teachers" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List classrooms with their teacher IDs",
+        "description" : "Returns every classroom along with the IDs of the teachers assigned.",
         "operationId" : "withTeachers",
         "responses" : {
           "200" : {
@@ -1433,6 +1471,8 @@
     "/api/v4/classrooms/with-subjects" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List classrooms with their subject IDs",
+        "description" : "Returns every classroom along with the IDs of the subjects taught.",
         "operationId" : "withSubjects",
         "responses" : {
           "200" : {
@@ -1454,6 +1494,8 @@
     "/api/v4/classrooms/with-students" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List classrooms with their student IDs",
+        "description" : "Returns every classroom along with the IDs of the students enrolled.",
         "operationId" : "withStudents",
         "responses" : {
           "200" : {
@@ -1475,6 +1517,8 @@
     "/api/v4/classrooms/subject/{subjectId}" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List classrooms taught for a subject",
+        "description" : "Returns the classrooms that include the given subject in their schedule.",
         "operationId" : "bySubject",
         "parameters" : [ {
           "name" : "subjectId",
@@ -1505,6 +1549,8 @@
     "/api/v4/classrooms/student-counts" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Count students per classroom",
+        "description" : "Returns one row per classroom with the total number of enrolled students.",
         "operationId" : "studentCounts",
         "responses" : {
           "200" : {
@@ -1526,6 +1572,8 @@
     "/api/v4/classrooms/my-classrooms" : {
       "get" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "List classrooms I teach (paged)",
+        "description" : "Returns the classrooms assigned to the authenticated teacher, ordered by creation date.",
         "operationId" : "myClassrooms",
         "parameters" : [ {
           "name" : "page",
@@ -1556,6 +1604,29 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ApiResponsePageResponseClassroomResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearerAuth" : [ ]
+        } ]
+      }
+    },
+    "/api/v4/classrooms/my-classroom" : {
+      "get" : {
+        "tags" : [ "classroom-controller" ],
+        "summary" : "Get my current classroom",
+        "description" : "Returns the authenticated student's classroom for the active academic year, the year's generation, and the courses they are currently enrolled in.",
+        "operationId" : "myCurrentClassroom",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseStudentCurrentClassroomResponse"
                 }
               }
             }
@@ -1641,6 +1712,8 @@
     "/api/v4/classrooms/{classroomId}/remove-subject" : {
       "delete" : {
         "tags" : [ "classroom-controller" ],
+        "summary" : "Remove a subject from a classroom",
+        "description" : "Unlinks the given subject from the classroom.",
         "operationId" : "removeSubject",
         "parameters" : [ {
           "name" : "classroomId",
@@ -2623,6 +2696,81 @@
           "studentCount" : {
             "type" : "integer",
             "format" : "int64"
+          }
+        }
+      },
+      "ApiResponseStudentCurrentClassroomResponse" : {
+        "type" : "object",
+        "properties" : {
+          "success" : {
+            "type" : "boolean"
+          },
+          "statusCode" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/StudentCurrentClassroomResponse"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
+      "CourseSummary" : {
+        "type" : "object",
+        "properties" : {
+          "courseId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StudentCurrentClassroomResponse" : {
+        "type" : "object",
+        "properties" : {
+          "classroom" : {
+            "$ref" : "#/components/schemas/ClassroomResponse"
+          },
+          "academicYearId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "academicYearName" : {
+            "type" : "string"
+          },
+          "generation" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "courses" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CourseSummary"
+            }
           }
         }
       },

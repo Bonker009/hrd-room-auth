@@ -1,5 +1,6 @@
 package org.kshrd.hrdroomservice.api.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -13,6 +14,7 @@ import org.kshrd.hrdroomservice.api.dto.classroom.AssessmentSummaryResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomRequest;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomStudentCountResponse;
+import org.kshrd.hrdroomservice.api.dto.classroom.StudentCurrentClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.UuidListRequest;
 import org.kshrd.hrdroomservice.api.dto.response.ApiResponse;
 import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
@@ -46,6 +48,11 @@ public class ClassroomController {
     private final ClassroomService classroomService;
 
     @GetMapping("/my-classrooms")
+    @Operation(
+            summary = "List classrooms I teach (paged)",
+            description =
+                    "Returns the classrooms assigned to the authenticated teacher, ordered by"
+                            + " creation date.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> myClassrooms(
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -56,31 +63,61 @@ public class ClassroomController {
         return ResponseUtil.ok(classroomService.myClassrooms(teacherId, page, size), "OK");
     }
 
+    @GetMapping("/my-classroom")
+    @Operation(
+            summary = "Get my current classroom",
+            description =
+                    "Returns the authenticated student's classroom for the active academic year,"
+                            + " the year's generation, and the courses they are currently enrolled"
+                            + " in.")
+    @PreAuthorize("hasRole('student')")
+    public ResponseEntity<ApiResponse<StudentCurrentClassroomResponse>> myCurrentClassroom() {
+        UUID studentId =
+                SecurityUtils.currentUserId()
+                        .orElseThrow(() -> new AccessDeniedException("Missing JWT subject"));
+        return ResponseUtil.ok(classroomService.currentForStudent(studentId), "OK");
+    }
+
     @GetMapping("/with-teachers")
+    @Operation(
+            summary = "List classrooms with their teacher IDs",
+            description = "Returns every classroom along with the IDs of the teachers assigned.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<List<ClassroomResponse>>> withTeachers() {
         return ResponseUtil.ok(classroomService.listWithTeachers(), "OK");
     }
 
     @GetMapping("/with-subjects")
+    @Operation(
+            summary = "List classrooms with their subject IDs",
+            description = "Returns every classroom along with the IDs of the subjects taught.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<List<ClassroomResponse>>> withSubjects() {
         return ResponseUtil.ok(classroomService.listWithSubjects(), "OK");
     }
 
     @GetMapping("/with-students")
+    @Operation(
+            summary = "List classrooms with their student IDs",
+            description = "Returns every classroom along with the IDs of the students enrolled.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<List<ClassroomResponse>>> withStudents() {
         return ResponseUtil.ok(classroomService.listWithStudents(), "OK");
     }
 
     @GetMapping("/student-counts")
+    @Operation(
+            summary = "Count students per classroom",
+            description = "Returns one row per classroom with the total number of enrolled students.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<List<ClassroomStudentCountResponse>>> studentCounts() {
         return ResponseUtil.ok(classroomService.studentCounts(), "OK");
     }
 
     @GetMapping("/subject/{subjectId}")
+    @Operation(
+            summary = "List classrooms taught for a subject",
+            description = "Returns the classrooms that include the given subject in their schedule.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<List<ClassroomResponse>>> bySubject(
             @PathVariable UUID subjectId) {
@@ -88,6 +125,9 @@ public class ClassroomController {
     }
 
     @GetMapping
+    @Operation(
+            summary = "List all classrooms (paged)",
+            description = "Returns every classroom in the system, newest first.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<PageResponse<ClassroomResponse>>> list(
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -96,6 +136,9 @@ public class ClassroomController {
     }
 
     @PostMapping
+    @Operation(
+            summary = "Create a classroom",
+            description = "Creates a new classroom under the active academic year.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<ClassroomResponse>> create(
             @Valid @RequestBody ClassroomRequest request, @AuthenticationPrincipal Jwt jwt) {
@@ -105,6 +148,9 @@ public class ClassroomController {
     }
 
     @PutMapping("/{classroomId}")
+    @Operation(
+            summary = "Update a classroom",
+            description = "Updates an existing classroom's name, abbreviation, description or image.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<ClassroomResponse>> update(
             @PathVariable UUID classroomId,
@@ -116,6 +162,10 @@ public class ClassroomController {
     }
 
     @DeleteMapping("/{classroomId}")
+    @Operation(
+            summary = "Delete a classroom",
+            description = "Removes a classroom along with its teacher, student, subject and"
+                    + " assessment links.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID classroomId) {
         classroomService.delete(classroomId);
@@ -125,6 +175,9 @@ public class ClassroomController {
     @PostMapping(
             value = "/{classroomId}/upload-image",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "Upload a classroom cover image",
+            description = "Uploads a JPEG/PNG/GIF/WebP image (max 20MB) and stores its public URL.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadImage(
             @PathVariable UUID classroomId,
@@ -136,6 +189,9 @@ public class ClassroomController {
     }
 
     @GetMapping("/{classroomId}/assessments")
+    @Operation(
+            summary = "List assessments assigned to a classroom",
+            description = "Returns the assessment summaries linked to the given classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<List<AssessmentSummaryResponse>>> assessments(
             @PathVariable UUID classroomId) {
@@ -143,6 +199,9 @@ public class ClassroomController {
     }
 
     @PostMapping("/{classroomId}/assign-assessments")
+    @Operation(
+            summary = "Assign assessments to a classroom",
+            description = "Links one or more assessments to the given classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> assignAssessments(
             @PathVariable UUID classroomId, @Valid @RequestBody AssessmentIdsRequest request) {
@@ -151,6 +210,9 @@ public class ClassroomController {
     }
 
     @PostMapping("/{classroomId}/remove-assessments")
+    @Operation(
+            summary = "Remove assessments from a classroom",
+            description = "Unlinks the given assessments from the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> removeAssessments(
             @PathVariable UUID classroomId, @Valid @RequestBody AssessmentIdsRequest request) {
@@ -159,6 +221,9 @@ public class ClassroomController {
     }
 
     @PostMapping("/{classroomId}/assign-teachers")
+    @Operation(
+            summary = "Assign teachers to a classroom",
+            description = "Links one or more teachers to the given classroom.")
     @PreAuthorize("hasRole('admin')")
     public ResponseEntity<ApiResponse<Void>> assignTeachers(
             @PathVariable UUID classroomId, @Valid @RequestBody UuidListRequest request) {
@@ -167,6 +232,9 @@ public class ClassroomController {
     }
 
     @PostMapping("/{classroomId}/remove-teachers")
+    @Operation(
+            summary = "Remove teachers from a classroom",
+            description = "Unlinks the given teachers from the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> removeTeachers(
             @PathVariable UUID classroomId, @Valid @RequestBody UuidListRequest request) {
@@ -175,12 +243,18 @@ public class ClassroomController {
     }
 
     @GetMapping("/{classroomId}/teachers")
+    @Operation(
+            summary = "List teachers in a classroom",
+            description = "Returns the IDs of all teachers assigned to the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<List<UUID>>> teachers(@PathVariable UUID classroomId) {
         return ResponseUtil.ok(classroomService.listTeacherIds(classroomId), "OK");
     }
 
     @PostMapping("/{classroomId}/assign-subject")
+    @Operation(
+            summary = "Assign a subject to a classroom",
+            description = "Links one subject to the given classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> assignSubject(
             @PathVariable UUID classroomId, @RequestParam UUID subjectId) {
@@ -189,6 +263,9 @@ public class ClassroomController {
     }
 
     @DeleteMapping("/{classroomId}/remove-subject")
+    @Operation(
+            summary = "Remove a subject from a classroom",
+            description = "Unlinks the given subject from the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> removeSubject(
             @PathVariable UUID classroomId, @RequestParam UUID subjectId) {
@@ -197,12 +274,18 @@ public class ClassroomController {
     }
 
     @GetMapping("/{classroomId}/subjects")
+    @Operation(
+            summary = "List subjects in a classroom",
+            description = "Returns the IDs of all subjects taught in the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<List<UUID>>> subjects(@PathVariable UUID classroomId) {
         return ResponseUtil.ok(classroomService.listSubjectIds(classroomId), "OK");
     }
 
     @PostMapping("/{classroomId}/assign-students")
+    @Operation(
+            summary = "Assign students to a classroom",
+            description = "Links one or more students to the given classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> assignStudents(
             @PathVariable UUID classroomId, @Valid @RequestBody UuidListRequest request) {
@@ -211,6 +294,9 @@ public class ClassroomController {
     }
 
     @PostMapping("/{classroomId}/remove-students")
+    @Operation(
+            summary = "Remove students from a classroom",
+            description = "Unlinks the given students from the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> removeStudents(
             @PathVariable UUID classroomId, @Valid @RequestBody UuidListRequest request) {
@@ -219,12 +305,19 @@ public class ClassroomController {
     }
 
     @GetMapping("/{classroomId}/students")
+    @Operation(
+            summary = "List students in a classroom",
+            description = "Returns the IDs of all students currently enrolled in the classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<List<UUID>>> students(@PathVariable UUID classroomId) {
         return ResponseUtil.ok(classroomService.listStudentIds(classroomId), "OK");
     }
 
     @PostMapping("/{sourceClassroomId}/move-student")
+    @Operation(
+            summary = "Move a student between classrooms",
+            description = "Moves a student to another classroom within the same active academic"
+                    + " year.")
     @PreAuthorize("hasAnyRole('admin','teacher')")
     public ResponseEntity<ApiResponse<Void>> moveStudent(
             @PathVariable UUID sourceClassroomId,
@@ -235,6 +328,9 @@ public class ClassroomController {
     }
 
     @GetMapping("/{classroomId}")
+    @Operation(
+            summary = "Get a classroom by ID",
+            description = "Returns the basic details of a single classroom.")
     @PreAuthorize("hasAnyRole('admin','teacher','student')")
     public ResponseEntity<ApiResponse<ClassroomResponse>> byId(@PathVariable UUID classroomId) {
         return ResponseUtil.ok(classroomService.getById(classroomId), "OK");

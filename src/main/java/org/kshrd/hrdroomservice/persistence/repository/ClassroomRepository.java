@@ -45,5 +45,16 @@ public interface ClassroomRepository extends JpaRepository<ClassroomEntity, UUID
             """)
     List<ClassroomEntity> findBySubject(UUID subjectId);
 
+    @Query(
+            """
+            select c
+            from ClassroomEntity c
+            join ClassroomStudentEntity cs on cs.classroomId = c.classroomId
+            join AcademicYearEntity y on y.academicYearId = c.academicYearId
+            where cs.studentId = :studentId and y.status = 'ACTIVE'
+            order by cs.assignedAt desc
+            """)
+    List<ClassroomEntity> findCurrentForStudent(UUID studentId, Pageable pageable);
+
     List<ClassroomEntity> findAllByOrderByCreatedAtDesc();
 }

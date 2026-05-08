@@ -13,6 +13,8 @@ import org.kshrd.hrdroomservice.api.dto.classroom.AssessmentSummaryResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomRequest;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.ClassroomStudentCountResponse;
+import org.kshrd.hrdroomservice.api.dto.classroom.CourseSummary;
+import org.kshrd.hrdroomservice.api.dto.classroom.StudentCurrentClassroomResponse;
 import org.kshrd.hrdroomservice.api.dto.classroom.UuidListRequest;
 import org.kshrd.hrdroomservice.api.dto.response.PageResponse;
 import org.kshrd.hrdroomservice.api.exception.ApiException;
@@ -34,6 +36,7 @@ import org.kshrd.hrdroomservice.persistence.repository.ClassroomRepository;
 import org.kshrd.hrdroomservice.persistence.repository.ClassroomStudentRepository;
 import org.kshrd.hrdroomservice.persistence.repository.ClassroomSubjectRepository;
 import org.kshrd.hrdroomservice.persistence.repository.ClassroomTeacherRepository;
+import org.kshrd.hrdroomservice.persistence.repository.EnrollmentRepository;
 import org.kshrd.hrdroomservice.storage.FileStorageService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -54,6 +57,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     private final AssessmentClassroomRepository assessmentClassroomRepository;
     private final AssessmentRepository assessmentRepository;
     private final AcademicYearRepository academicYearRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final FileStorageService fileStorageService;
     private final ClassroomEntityMapper classroomMapper;
 
@@ -350,6 +354,28 @@ public class ClassroomServiceImpl implements ClassroomService {
         }
         classroomStudentRepository.deleteByClassroomIdAndStudentId(sourceClassroomId, studentId);
         insertStudentIfMissing(targetClassroomId, studentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentCurrentClassroomResponse currentForStudent(UUID studentId) {
+        List<ClassroomEntity> matches =
+                classroomRepository.findCurrentForStudent(studentId, PageRequest.of(0, 1));
+        if (matches.isEmpty()) {
+            throw ApiException.notFound("No current classroom");
+        }
+        ClassroomEntity classroom = matches.get(0);
+        AcademicYearEntity year =
+                classroom.getAcademicYearId() == null
+                        ? null
+                        : academicYearRepository.findById(classroom.getAcademicYearId()).orElse(null);
+        List<CourseSummary> courses = enrollmentRepository.findCurrentCoursesForStudent(studentId);
+        return new StudentCurrentClassroomResponse(
+                toBasic(classroom),
+                year != null ? year.getAcademicYearId() : classroom.getAcademicYearId(),
+                year != null ? year.getName() : null,
+                year != null ? year.getGeneration() : null,
+                courses);
     }
 
     private void ensureClassroom(UUID classroomId) {
