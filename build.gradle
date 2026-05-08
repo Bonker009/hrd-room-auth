@@ -36,7 +36,7 @@ dependencies {
 	implementation platform('software.amazon.awssdk:bom:2.29.45')
 	implementation 'software.amazon.awssdk:s3'
 	implementation 'org.keycloak:keycloak-admin-client:26.0.8'
-	implementation 'org.passay:passay:1.6.6'
+	implementation 'org.passay:passay:2.0.0'
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
 	implementation 'com.bucket4j:bucket4j-core:8.10.1'
